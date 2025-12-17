@@ -1,0 +1,17 @@
+﻿components/trading/trading-interface.tsx(94,35): error TS2339: Property 'price' does not exist on type 'never'.
+components/trading/trading-interface.tsx(94,62): error TS2339: Property 'rate' does not exist on type 'never'.
+components/trading/trading-interface.tsx(112,87): error TS2339: Property 'change_pct' does not exist on type 'never'.
+components/trading/trading-interface.tsx(113,43): error TS2339: Property 'change_pct' does not exist on type 'never'.
+components/trading/trading-interface.tsx(114,44): error TS2339: Property 'change_pct' does not exist on type 'never'.
+types/supabase.ts(833,14): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(834,9): error TS2536: Type '"Views"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(837,6): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(838,7): error TS2536: Type '"Views"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(858,13): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(861,5): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(879,13): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(882,5): error TS2536: Type '"Tables"' cannot be used to index type 'Database[PublicTableNameOrOptions["schema"]]'.
+types/supabase.ts(900,13): error TS2536: Type '"Enums"' cannot be used to index type 'Database[PublicEnumNameOrOptions["schema"]]'.
+types/supabase.ts(903,5): error TS2536: Type '"Enums"' cannot be used to index type 'Database[PublicEnumNameOrOptions["schema"]]'.
+types/supabase.ts(915,13): error TS2536: Type '"CompositeTypes"' cannot be used to index type 'Database[PublicCompositeTypeNameOrOptions["schema"]]'.
+types/supabase.ts(918,5): error TS2536: Type '"CompositeTypes"' cannot be used to index type 'Database[PublicCompositeTypeNameOrOptions["schema"]]'.

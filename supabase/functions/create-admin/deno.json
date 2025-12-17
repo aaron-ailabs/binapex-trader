@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "types": ["https://esm.sh/v135/@supabase/functions-js@2.1.5/src/edge-runtime.d.ts"]
+  },
+  "importMap": "./import_map.json"
+}

@@ -1,0 +1,55 @@
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { DashboardLayout } from "@/components/layout/dashboard-layout"
+import { WithdrawalForm } from "@/components/banking/withdrawal-form"
+import { GlassCard } from "@/components/ui/glass-card"
+import { AlertCircle } from "lucide-react"
+
+export default async function WithdrawalPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    redirect("/login")
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+
+  const { data: userBanks } = await supabase.from("user_bank_accounts").select("*").eq("user_id", user.id)
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold">Withdraw Funds</h1>
+          <p className="text-gray-400">Request a withdrawal to your bank account</p>
+        </div>
+
+        <GlassCard className="p-6 border-[#F59E0B]/20 bg-[#F59E0B]/5">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+            <div className="text-sm space-y-1">
+              <p className="font-medium text-[#F59E0B]">Important Withdrawal Information</p>
+              <ul className="text-gray-300 space-y-1 list-disc list-inside">
+                <li>Withdrawals are processed within 1-3 business days</li>
+                <li>Bank account must be in your registered name</li>
+                <li>Minimum withdrawal: $100 USD equivalent</li>
+                <li>You cannot withdraw funds with active open positions</li>
+              </ul>
+            </div>
+          </div>
+        </GlassCard>
+
+        <WithdrawalForm
+          userBanks={userBanks || []}
+          userId={user.id}
+          currentBalance={profile?.balance_usd || 0}
+          bonusBalance={profile?.bonus_balance || 0}
+        />
+      </div>
+    </DashboardLayout>
+  )
+}
