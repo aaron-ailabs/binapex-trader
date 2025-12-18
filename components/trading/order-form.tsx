@@ -81,8 +81,8 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
             symbol: normalizedSymbol,
             order_type: side.toLowerCase(), // 'buy' or 'sell'
             type: orderType.toLowerCase(),
-            price,
-            quantity
+            price: Number(price), // Force number type
+            quantity: Number(quantity) // Force number type
         })
       });
 
@@ -92,6 +92,9 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
         throw new Error(result.error || "Order execution failed");
       }
       
+      // Call onSuccess to refresh parent/list if provided
+      if (onSuccess) onSuccess();
+
       alert(orderType === 'MARKET' ? "Order Filled Successfully!" : "Limit Order Placed!");
       
       // Refresh
@@ -146,7 +149,7 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
       {/* BALANCE INFO */}
       <div className="flex justify-between text-xs text-gray-400 mb-2">
         <span>Avail: {side === 'BUY' ? `$${balance.toFixed(2)}` : `${assetBalance.toFixed(6)} ${symbol.split('-')[0]}`}</span>
-        <span className="text-[#D4AF37]">Deposite Funds +</span>
+        <span className="text-yellow-500 cursor-pointer hover:text-yellow-400">Deposit Funds +</span>
       </div>
 
       {/* INPUTS */}

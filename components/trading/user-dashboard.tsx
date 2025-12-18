@@ -25,9 +25,37 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
     
     fetchOrders(); // Initial fetch
     
-    // Polling for updates
-    const interval = setInterval(fetchOrders, 5000)
-    return () => clearInterval(interval)
+    // Realtime subscription
+    const channel = supabase
+      .channel('table-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'limit_orders',
+        },
+        (payload) => {
+           // New order received
+           fetchOrders()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'limit_orders',
+        },
+        (payload) => {
+            fetchOrders()
+        }
+      )
+      .subscribe()
+
+    return () => {
+        supabase.removeChannel(channel)
+    }
   }, []);
 
   return (
