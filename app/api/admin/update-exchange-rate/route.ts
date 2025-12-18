@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Error updating exchange rate:', updateError)
       return NextResponse.json({
-        error: 'Failed to update exchange rate'
+        error: `Failed to update exchange rate: ${updateError.message}`
       }, { status: 500 })
     }
 

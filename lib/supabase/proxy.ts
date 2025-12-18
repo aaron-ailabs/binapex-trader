@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
 
     // Determine if we need to authenticate the user
     // We only need auth if it's a protected route (or an auth route to redirect away)
-    const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/admin")
+    const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/api")
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/admin/login"
 
     let user = null

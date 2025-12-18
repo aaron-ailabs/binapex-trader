@@ -44,7 +44,7 @@ export async function updateExchangeRate(rate: number, pair: string = "USD-MYR")
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabase.auth.getSession()}`, // This might not work, but let's try
+      'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
     },
     body: JSON.stringify({ rate }),
   })
