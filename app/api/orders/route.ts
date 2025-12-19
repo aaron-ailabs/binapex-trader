@@ -45,8 +45,23 @@ export async function POST(request: NextRequest) {
     let tradingPairId: string | null = null;
 
     if (symbol) {
-        const { data: pair } = await supabase.from('trading_pairs').select('id').eq('symbol', symbol).single();
-        if (pair) tradingPairId = pair.id
+        // 1. Try exact match (e.g. "BTCUSD" from some sources)
+        const { data: exactPair } = await supabase.from('trading_pairs').select('id').eq('symbol', symbol).single();
+        if (exactPair) {
+            tradingPairId = exactPair.id
+        } else {
+            // 2. Try normalized (remove separators) e.g. "BTC-USD" -> "BTCUSD" (common for Crypto/Forex)
+            const normalized = symbol.replace(/[-/]/g, '');
+            const { data: normPair } = await supabase.from('trading_pairs').select('id').eq('symbol', normalized).single();
+            if (normPair) {
+                tradingPairId = normPair.id
+            } else {
+                // 3. Try base symbol only (e.g. "AAPL-USD" -> "AAPL" for Stocks)
+                const base = symbol.split(/[-/]/)[0];
+                 const { data: basePair } = await supabase.from('trading_pairs').select('id').eq('symbol', base).single();
+                 if (basePair) tradingPairId = basePair.id;
+            }
+        }
     }
     
     // Fallback: if asset_id provided (legacy), try to find pair with base_currency = asset.symbol?

@@ -144,7 +144,7 @@ export function TradingInterface() {
                 currentPrice={price} 
                 onSuccess={() => {/* Refresh Dashboard handled internally via polling or callback */}} 
              />
-             <OrderBook price={price} />
+             <OrderBook price={price} symbol={selectedSymbol} />
           </div>
       </div>
     

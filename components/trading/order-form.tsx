@@ -60,36 +60,40 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
 
       // Determine Execution Price and Quantity
       // Input is usually Amount in USD.
-      // If Market Buy, Qty = AmountUSD / CurrentPrice (approx, backend uses exact matching)
+      // If Market Buy, Qty = AmountUSD / CurrentPrice
       // If Limit Buy, Qty = AmountUSD / LimitPrice.
-      // API expects 'quantity' (in Asset units) and 'price'.
       
       const price = orderType === 'MARKET' 
-        ? (side === 'BUY' ? currentPrice * 1.05 : currentPrice * 0.95) 
+        ? (side === 'BUY' ? currentPrice * 1.05 : currentPrice * 0.95) // Est. Price for calc
         : parseFloat(limitPrice);
-      const quantity = parseFloat(amountUSD) / price;
+      
+      // For Display/Logic, we use the User's input Limit Price or Current Price
+      const effectivePrice = orderType === 'LIMIT' ? parseFloat(limitPrice) : currentPrice;
+
+      // Calculate Asset Amount
+      const quantity = parseFloat(amountUSD) / effectivePrice;
 
       if (isNaN(quantity) || quantity <= 0) {
         throw new Error("Invalid quantity");
       }
 
       // Call API
-      const response = await fetch('/api/orders', {
+      const response = await fetch('/api/trade/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            symbol: normalizedSymbol,
-            order_type: side.toLowerCase(), // 'buy' or 'sell'
-            type: orderType.toLowerCase(),
-            price: Number(price), // Force number type
-            quantity: Number(quantity) // Force number type
+            pair: normalizedSymbol, // e.g. BTC-USD
+            side: side, // 'BUY' or 'SELL'
+            type: orderType, // 'LIMIT' or 'MARKET'
+            amount: quantity, // Asset Amount
+            price: orderType === 'LIMIT' ? effectivePrice : null // Price required for Limit, optional for Market (handled by route)
         })
       });
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || "Order execution failed");
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Order execution failed");
       }
       
       // Call onSuccess to refresh parent/list if provided
@@ -97,9 +101,8 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
 
       alert(orderType === 'MARKET' ? "Order Filled Successfully!" : "Limit Order Placed!");
       
-      // Refresh
-      if (onSuccess) onSuccess();
-      // Refetch balances triggers via effect if needed
+      // Clean inputs
+      setAmountUSD('');
       
     } catch (err: unknown) {
       if (err instanceof Error) {
