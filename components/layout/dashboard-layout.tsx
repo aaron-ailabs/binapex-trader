@@ -16,7 +16,7 @@ import {
   Menu,
   X,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -39,7 +39,31 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Fetch profile with wallets join to get real USD balance
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*, wallets(balance)")
+        .eq("id", user.id)
+        .single()
+      
+      // Use wallets[0].balance if available, else fallback to profile.balance_usd
+      if (profile) {
+        // @ts-ignore - Supabase types might verify specific join syntax, suppressing for immediate fix
+        const walletBalance = profile.wallets?.[0]?.balance
+        // Use wallet balance if it exists (source of truth), otherwise profile cache
+        setBalance(walletBalance !== undefined ? walletBalance : profile.balance_usd)
+      }
+    }
+    fetchBalance()
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -90,6 +114,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             )
           })}
         </nav>
+
+        {/* User Balance Display */}
+        <div className="mx-4 mb-2 p-4 rounded-xl bg-white/5 border border-white/10">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Total Balance</p>
+            <p className="text-xl font-bold text-emerald-400">
+                ${balance !== null ? balance.toFixed(2) : "0.00"}
+            </p>
+        </div>
 
         {/* Logout Button */}
         <div className="absolute bottom-0 w-full p-4 border-t border-white/10 bg-black/20">
