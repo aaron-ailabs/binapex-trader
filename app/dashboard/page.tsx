@@ -22,8 +22,19 @@ export default async function DashboardPage() {
   }
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  
+  // Fetch USD Wallet Balance (Source of Truth)
+  const { data: usdWallet } = await supabase
+    .from("wallets")
+    .select("balance")
+    .eq("user_id", user.id)
+    .eq("asset", "USD")
+    .single()
 
   const { data: assets } = await supabase.from("assets").select("*").eq("is_active", true).limit(8)
+  
+  // Use Wallet Balance if available, fallback to profile (legacy)
+  const displayBalance = usdWallet?.balance ?? profile?.balance_usd ?? 0
 
   const { data: portfolio } = await supabase
     .from("portfolio")
@@ -47,13 +58,6 @@ export default async function DashboardPage() {
 
   // Adjusted P/L logic
   const totalPnL = totalPortfolioValue - totalInvestedValue
-  // Total Balance from Profile includes USD. Total Equity = USD + Portfolio Value?
-  // User profile balance_usd is Unused USD.
-  // We can show Total Equity in stats?
-  // Current stats show profile.balance_usd (Total Balance). 
-  // Maybe "Total Equity" is better?
-  // For now, let's keep Total Balance as USD and add Portfolio Value?
-  // Or just update P/L calc for the StatCard.
   
   const pnlPercent = totalInvestedValue > 0 ? ((totalPnL / totalInvestedValue) * 100).toFixed(2) : "0.00"
 
@@ -72,7 +76,7 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="USD Balance"
-            value={`$${(profile?.balance_usd || 0).toFixed(2)}`}
+            value={`$${displayBalance.toFixed(2)}`}
             icon={DollarSign}
             trend={{
               value: "Available",

@@ -32,8 +32,16 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
 
       // 2. Get Asset Holdings (from wallets)
       const assetSymbol = normalizedSymbol.split('-')[0] // Assume symbol is "BTC-USD"
-      const { data: wallet } = await supabase.from('wallets').select('available_balance').eq('user_id', user.id).eq('asset_symbol', assetSymbol).single();
-      if (wallet) setAssetBalance(Number(wallet.available_balance));
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance, locked_balance')
+        .eq('user_id', user.id)
+        .eq('asset', assetSymbol)
+        .single();
+        
+      if (wallet) {
+         setAssetBalance(Number(wallet.balance) - Number(wallet.locked_balance));
+      }
 
       // 3. Get Payout Rate from assets
       // Try exact match first, then formatted
