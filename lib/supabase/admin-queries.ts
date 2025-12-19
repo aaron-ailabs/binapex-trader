@@ -61,55 +61,30 @@ export async function approveDeposit(transactionId: string) {
   const supabase = await createClient()
 
   try {
-    // Get transaction details
-    const { data: transaction, error: fetchError } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("id", transactionId)
-      .single()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (fetchError || !transaction) {
-      captureBusinessLogicError("Transaction not found for approval", {
+    if (!user) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    // Call the atomic RPC
+    const { error } = await supabase.rpc("approve_deposit", {
+      transaction_id: transactionId,
+      admin_id: user.id
+    })
+
+    if (error) {
+      captureApiError(error, {
         action: "approve-deposit",
         metadata: { transactionId },
       })
-      return { success: false, error: "Transaction not found" }
-    }
-
-    // Update transaction status
-    const { error: updateError } = await supabase
-      .from("transactions")
-      .update({ status: "completed", updated_at: new Date().toISOString() })
-      .eq("id", transactionId)
-
-    if (updateError) {
-      captureApiError(updateError, {
-        action: "approve-deposit-update",
-        metadata: { transactionId },
-      })
-      return { success: false, error: updateError.message }
-    }
-
-    const { data: creditResult, error: balanceError } = await supabase.rpc("credit_user_balance", {
-      p_user_id: transaction.user_id,
-      p_amount: transaction.amount,
-    })
-
-    if (balanceError || !creditResult?.success) {
-      // Rollback transaction status
-      await supabase.from("transactions").update({ status: "pending" }).eq("id", transactionId)
-
-      const errorMsg = balanceError?.message || creditResult?.error || "Failed to credit balance"
-      captureApiError(balanceError || new Error(errorMsg), {
-        action: "approve-deposit-credit",
-        metadata: { transactionId, userId: transaction.user_id, amount: transaction.amount },
-      })
-
-      return { success: false, error: errorMsg }
+      return { success: false, error: error.message }
     }
 
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     captureApiError(error, {
       action: "approve-deposit",
       metadata: { transactionId },
@@ -138,12 +113,14 @@ export async function rejectDeposit(transactionId: string, reason: string) {
 }
 
 export async function approveWithdrawal(transactionId: string) {
+  // Using the new secure RPC for approvals is also recommended if it exists, 
+  // but for now the original was basic update. 
+  // Wait, I created approve_withdrawal RPC earlier!
   const supabase = await createClient()
 
-  const { error } = await supabase
-    .from("transactions")
-    .update({ status: "completed", updated_at: new Date().toISOString() })
-    .eq("id", transactionId)
+  const { error } = await supabase.rpc("approve_withdrawal", {
+    transaction_id: transactionId
+  })
 
   if (error) {
     return { success: false, error: error.message }
@@ -156,55 +133,21 @@ export async function rejectWithdrawal(transactionId: string, reason: string) {
   const supabase = await createClient()
 
   try {
-    // Get transaction details
-    const { data: transaction, error: fetchError } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("id", transactionId)
-      .single()
+    const { error } = await supabase.rpc("reject_withdrawal", {
+      transaction_id: transactionId,
+      reason: reason
+    })
 
-    if (fetchError || !transaction) {
-      captureBusinessLogicError("Transaction not found for rejection", {
+    if (error) {
+       captureApiError(error, {
         action: "reject-withdrawal",
         metadata: { transactionId },
       })
-      return { success: false, error: "Transaction not found" }
-    }
-
-    // Update transaction status
-    const { error: updateError } = await supabase
-      .from("transactions")
-      .update({
-        status: "rejected",
-        metadata: { rejection_reason: reason },
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", transactionId)
-
-    if (updateError) {
-      captureApiError(updateError, {
-        action: "reject-withdrawal-update",
-        metadata: { transactionId },
-      })
-      return { success: false, error: updateError.message }
-    }
-
-    // Refund user balance using SQL function
-    const { error: refundError } = await supabase.rpc("credit_user_balance", {
-      p_user_id: transaction.user_id,
-      p_amount: transaction.amount,
-    })
-
-    if (refundError) {
-      captureApiError(refundError, {
-        action: "reject-withdrawal-refund",
-        metadata: { transactionId, userId: transaction.user_id, amount: transaction.amount },
-      })
-      return { success: false, error: "Failed to refund balance" }
+      return { success: false, error: error.message }
     }
 
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     captureApiError(error, {
       action: "reject-withdrawal",
       metadata: { transactionId },
