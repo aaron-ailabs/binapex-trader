@@ -63,7 +63,71 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
     }
   };
 
-  // ... handleExecute ...
+  // Execute Order
+  const handleExecute = async () => {
+    if (!amountUSD) return;
+    setIsLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Determine Execution Price and Quantity
+      // Input is usually Amount in USD.
+      // If Market Buy, Qty = AmountUSD / CurrentPrice
+      // If Limit Buy, Qty = AmountUSD / LimitPrice.
+      
+      const price = orderType === 'MARKET' 
+        ? (side === 'BUY' ? currentPrice * 1.05 : currentPrice * 0.95) // Est. Price for calc
+        : parseFloat(limitPrice);
+      
+      // For Display/Logic, we use the User's input Limit Price or Current Price
+      const effectivePrice = orderType === 'LIMIT' ? parseFloat(limitPrice) : currentPrice;
+
+      // Calculate Asset Amount
+      const quantity = parseFloat(amountUSD) / effectivePrice;
+
+      if (isNaN(quantity) || quantity <= 0) {
+        throw new Error("Invalid quantity");
+      }
+
+      // Call API
+      const response = await fetch('/api/trade/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            pair: normalizedSymbol, // e.g. BTC-USD
+            side: side, // 'BUY' or 'SELL'
+            type: orderType, // 'LIMIT' or 'MARKET'
+            amount: quantity, // Asset Amount
+            price: orderType === 'LIMIT' ? effectivePrice : null // Price required for Limit, optional for Market (handled by route)
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || "Order execution failed");
+      }
+      
+      // Call onSuccess to refresh parent/list if provided
+      if (onSuccess) onSuccess();
+
+      alert(orderType === 'MARKET' ? "Order Filled Successfully!" : "Limit Order Placed!");
+      
+      // Clean inputs
+      setAmountUSD('');
+      
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(`Execution Failed: ${err.message}`);
+      } else {
+         alert(`Execution Failed: An unknown error occurred`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Calculations
   const calculatedFee = parseFloat(amountUSD || '0') * (side === 'BUY' ? BUY_FEE : SELL_FEE);

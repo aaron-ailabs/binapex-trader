@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, ChangeEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ export function AdminAssetRow({ asset }: AdminAssetRowProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value)
     if (val >= 0 && val <= 100) {
       setPayoutRate(val)
