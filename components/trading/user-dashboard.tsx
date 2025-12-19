@@ -1,10 +1,12 @@
 'use client';
 import { createClient } from '@/lib/supabase/client';
-import { useEffect, useState } from 'react';
+import { Database } from '@/types/supabase';
+
+type Order = Database['public']['Tables']['orders']['Row'];
 
 export function UserDashboard({ symbol }: { symbol?: string }) {
   const supabase = createClient();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'open' | 'history'>('open');
 
   const fetchOrders = async () => {
@@ -102,12 +104,12 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
               
               return (
                 <tr key={order.id} className="hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-2">{new Date(order.created_at).toLocaleTimeString()}</td>
+                  <td className="px-4 py-2">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'N/A'}</td>
                   <td className="px-4 py-2 font-bold text-white">{order.pair}</td>
                   <td className={`px-4 py-2 ${order.side === 'BUY' ? 'text-green-500' : 'text-red-500'}`}>
                       {order.side}
                   </td>
-                  <td className="px-4 py-2 text-white">${Number(order.price || 0).toFixed(2)}</td>
+                  <td className="px-4 py-2 text-white">${Number(order.price ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-2">{Number(order.amount).toFixed(6)}</td>
                   <td className="px-4 py-2">
                       <div className="flex items-center gap-2">

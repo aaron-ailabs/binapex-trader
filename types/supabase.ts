@@ -254,14 +254,18 @@ export type Database = {
           },
         ]
       }
-      limit_orders: {
+      orders: {
         Row: {
           amount: number
-          asset_symbol: string
+          pair: string
+          side: string
           created_at: string | null
           expires_at: string | null
           id: string
-          limit_price: number
+          price: number
+          trigger_price: number | null
+          fee_rate: number
+          filled_amount: number
           status: string
           type: string
           updated_at: string | null
@@ -269,11 +273,15 @@ export type Database = {
         }
         Insert: {
           amount: number
-          asset_symbol: string
+          pair: string
+          side: string
           created_at?: string | null
           expires_at?: string | null
           id?: string
-          limit_price: number
+          price: number
+          trigger_price?: number | null
+          fee_rate?: number
+          filled_amount?: number
           status?: string
           type: string
           updated_at?: string | null
@@ -281,11 +289,15 @@ export type Database = {
         }
         Update: {
           amount?: number
-          asset_symbol?: string
+          pair?: string
+          side?: string
           created_at?: string | null
           expires_at?: string | null
           id?: string
-          limit_price?: number
+          price?: number
+          trigger_price?: number | null
+          fee_rate?: number
+          filled_amount?: number
           status?: string
           type?: string
           updated_at?: string | null
@@ -293,7 +305,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "limit_orders_user_id_fkey"
+            foreignKeyName: "orders_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -339,7 +351,7 @@ export type Database = {
           },
         ]
       }
-      orders: {
+      legacy_orders: {
         Row: {
           amount: number
           asset_id: string | null

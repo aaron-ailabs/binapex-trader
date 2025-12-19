@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   // 2. Parse Input
   const body = await request.json();
-  const { pair, side, type, amount, price } = body; // amount is Asset amount
+  const { pair, side, type, amount, price, triggerPrice } = body; // amount is Asset amount
 
   if (!pair || !side || !type || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     p_type: type,
     p_amount: amount,
     p_price: executionPrice,
-    p_trigger_price: null // TODO: Support STOP_LIMIT
+    p_trigger_price: type === 'STOP_LIMIT' ? triggerPrice : null
   });
 
   if (orderError || !orderRes.success) {
