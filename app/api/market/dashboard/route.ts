@@ -33,7 +33,8 @@ export async function GET() {
             price: item.price,
             rate: item.rate,
             change_pct: item.change_pct,
-            volume: item.volume
+            volume: item.volume,
+            payout_rate: item.payout_rate
         };
       }
     });

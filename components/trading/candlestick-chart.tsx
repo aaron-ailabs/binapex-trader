@@ -6,7 +6,7 @@ import type { IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-c
 import React, { useEffect, useRef, useState } from 'react';
 
 interface CandleData {
-    time: string
+    time: string | number
     open: number
     high: number
     low: number

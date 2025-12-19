@@ -8,6 +8,7 @@ export type MarketData = {
   change_pct: number;
   volume: number;
   category: string;
+  payout_rate: number;
 };
 
 // Simple in-memory cache for assets to avoid DB hammering
@@ -86,7 +87,8 @@ export async function getBatchPrices(): Promise<MarketData[]> {
       rate: ticker.includes('=X') ? price : undefined,  // Forex has rate
       change_pct: yahooChangePct || change_pct || 0,
       volume: q.regularMarketVolume ?? 0,
-      category: asset.category
+      category: asset.category,
+      payout_rate: asset.payout_rate || 85
     };
   });
 }

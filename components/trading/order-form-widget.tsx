@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'; // Assuming cn utility exists, usually does in
 type OrderType = 'LIMIT' | 'MARKET' | 'STOP_LIMIT';
 type Side = 'BUY' | 'SELL';
 
-export function OrderFormWidget({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: { symbol: string, currentPrice: number, onSuccess?: () => void }) {
+export function OrderFormWidget({ symbol = 'BTC-USD', currentPrice = 0, payoutRate = 85, onSuccess }: { symbol: string, currentPrice: number, payoutRate?: number, onSuccess?: () => void }) {
   const supabase = createClient();
   const { balance_usd, holdings, isLoading: isPortfolioLoading } = useUserPortfolio();
   
@@ -17,16 +17,7 @@ export function OrderFormWidget({ symbol = 'BTC-USD', currentPrice = 0, onSucces
   const [side, setSide] = useState<Side>('BUY');
   
   // Inputs
-  const [amountInput, setAmountInput] = useState<string>(''); // User input for AMOUNT (Usually Asset Amount or USD Amount? Spec says "Amount Input: With BTC suffix", implying Asset Amount)
-  // WAIT: "Amount Input: With BTC suffix" -> This implies Quantity.
-  // BUT: "Available Balance: Displays USD (if Buy) ... with tiny Max" -> If I have USD, I usually input USD amount for Market Buy.
-  // However, typical advanced forms (like Binance) often allow inputting either.
-  // The User Spec Phase 3 says: "If BUY selected: 100% = (USD Balance / Price)..." -> This calculates Max Asset Quantity.
-  // So the input should likely be ASSET Quantity ("BTC").
-  // Let's stick to "Amount" = Asset Quantity.
-  // If Market Buy, we might convert to USD for the RPC call which takes `p_amount_usd`.
-  // Wait, RPC `execute_market_order` takes `p_amount_usd`.
-  // If the user inputs BTC Amount, we verify: `BTC Amount * Price = USD Amount`.
+  const [amountInput, setAmountInput] = useState<string>(''); // User input for AMOUNT (usually Asset Amount)
   
   const [priceInput, setPriceInput] = useState<string>(''); // For Limit/Stop
   const [stopPriceInput, setStopPriceInput] = useState<string>(''); // For Stop-Limit
@@ -43,25 +34,6 @@ export function OrderFormWidget({ symbol = 'BTC-USD', currentPrice = 0, onSucces
 
   // Fee Rates
   const FEE_RATE = isBuy ? 0.006 : 0.011; // 0.6% or 1.1%
-
-  const [payoutRate, setPayoutRate] = useState<number>(85); // Default 85%
-
-  // Fetch Payout Rate
-  useEffect(() => {
-    const fetchPayoutRate = async () => {
-        // Try exact match first (e.g. "Gold", "USD/SGD"), then parts
-        const { data, error } = await supabase
-            .from('assets')
-            .select('payout_rate')
-            .or(`symbol.eq.${symbol},symbol.eq.${assetSymbol},symbol.eq.${symbol.replace('/', '-')}`)
-            .maybeSingle(); // Use maybeSingle to avoid error if multiple match (unlikely with unique constraint) or none
-        
-        if (data?.payout_rate) {
-            setPayoutRate(data.payout_rate);
-        }
-    };
-    fetchPayoutRate();
-  }, [assetSymbol, symbol]);
 
   // Update Price Input on Current Price Change (only if Market)
   useEffect(() => {

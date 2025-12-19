@@ -4,13 +4,7 @@
 
 
 import { useState, useEffect } from "react"
-  // Use the new hook for data
-  import { useMarketData } from '@/hooks/useMarketData' 
-  // Note: I need to add this import to the top of file, but I cannot do it in this block easily.
-  // Instead, I will replace the component logic.
-  
-  // Actually, wait. I can't import in the middle of a file with replace_file_content properly if it's not a block replacement.
-  // I should rewrite the component start to include the import and the hook usage.
+import dynamic from 'next/dynamic'
 import { OrderFormWidget } from "./order-form-widget"
 import { OrderBook } from "./order-book"
 import { TradeList } from "./trade-list"
@@ -19,6 +13,7 @@ import { GlassCard } from "@/components/ui/glass-card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
 import { useMarketData } from "@/hooks/useMarketData"
+import { useSearchParams } from 'next/navigation'
 
 // Dynamic import to avoid SSR issues with lightweight-charts
 const CandlestickChart = dynamic(
@@ -26,15 +21,15 @@ const CandlestickChart = dynamic(
   { ssr: false }
 )
 
-import { Tables } from "@/types/supabase"
 
 interface AssetInfo {
   symbol: string
   price?: number
   rate?: number
   change_pct?: number
+  payout_rate?: number
   // Add other fields as needed from the python API response
-    [key: string]: any // Fallback for now as python API isn't fully typed here, but better than full any
+    [key: string]: any 
 }
 
 interface DashboardData {
@@ -44,7 +39,7 @@ interface DashboardData {
     commodities: Record<string, AssetInfo>
 }
 
-import { useSearchParams } from 'next/navigation'
+
 
 export function TradingInterface() {
   const searchParams = useSearchParams()
@@ -164,6 +159,7 @@ export function TradingInterface() {
                 key={selectedSymbol}
                 symbol={selectedSymbol} 
                 currentPrice={price} 
+                payoutRate={currentAssetInfo?.payout_rate || 85}
                 onSuccess={() => {/* Refresh Dashboard handled internally via polling or callback */}} 
              />
              <OrderBook price={price} symbol={selectedSymbol} />
