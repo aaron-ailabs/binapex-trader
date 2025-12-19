@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react"
 import dynamic from 'next/dynamic'
-import { OrderForm } from "./order-form"
+import { OrderFormWidget } from "./order-form-widget"
 import { OrderBook } from "./order-book"
 import { UserDashboard } from "./user-dashboard"
 import { MarketWidget } from "./market-widget"
@@ -139,7 +139,7 @@ export function TradingInterface() {
 
           {/* RIGHT: Order Book & Entry */}
           <div className="w-full lg:w-[320px] flex flex-col gap-4">
-             <OrderForm 
+             <OrderFormWidget 
                 symbol={selectedSymbol} 
                 currentPrice={price} 
                 onSuccess={() => {/* Refresh Dashboard handled internally via polling or callback */}} 

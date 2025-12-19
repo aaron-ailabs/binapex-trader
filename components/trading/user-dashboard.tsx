@@ -19,34 +19,26 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Use limit_orders table which has filled_amount and standard order fields
+    // Use 'orders' table (Live DB)
     let query = supabase
-      .from('limit_orders')
-      .select('*, trading_pairs(symbol)')
+      .from('orders')
+      .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (activeTab === 'open') {
-        // Assuming 'OPEN' and 'PARTIAL' map to standard statuses. 
-        // limit_orders usually has 'pending', 'open', 'filled', 'cancelled' etc.
-        // Let's check schema or assume standard 'open'/'partial_filled'? 
-        // Adjusted to use 'open' and matching logic. 
-        // Note: The database schema implies 'status' is string.
+        // Live DB statuses are lowercase based on check
         query = query.in('status', ['open', 'partial']);
     } else {
-        query = query.in('status', ['filled', 'cancelled', 'rejected']);
+        query = query.in('status', ['filled', 'canceled', 'rejected']); 
     }
     
-    // Filter by symbol if provided via the relationship
+    // Filter by symbol if provided (client side is safer for simple string matching if exact match fails)
+    // Or plain .eq('pair', normalizedSymbol) if we know the format
     if (symbol) {
-        // We can't easily query on joined table column with simple .eq() on the root
-        // But Supabase supports filtering on embedded resources using !inner logic or just correct syntax.
-        // For simplicity with standard PostgREST, we might need simple filtering on the client or correct foreign table filtering.
-        // query = query.eq('trading_pairs.symbol', symbol); // This doesn't work directly in v2 JS client usually without !inner
-        
-        // Let's skip server-side symbol filtering for now and do it client side or assume ID lookup is needed.
-        // OR: use the generic search if available.
-        // Given complexity, and "My Orders" usually isn't massive, client side filter is safer for now.
+         // Try exact match first
+         // query = query.eq('pair', symbol.replace('/', '-')); 
+         // For now let's filter client side to be safe with format differences
     }
 
     const { data, error } = await query.limit(50);
@@ -56,11 +48,11 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
         return;
     }
 
-    let fetchedOrders = (data as any) as LimitOrder[];
+    let fetchedOrders = (data as any) as any[];
     
     if (symbol) {
-        const normalized = symbol.replace('/', '-'); // standardizing e.g. BTC/USD -> BTC-USD if that's how it's stored
-        fetchedOrders = fetchedOrders.filter(o => o.trading_pairs?.symbol.includes(normalized) || o.trading_pairs?.symbol.replace('-', '/') === symbol);
+        const normalized = symbol.replace('/', '-'); 
+        fetchedOrders = fetchedOrders.filter(o => o.pair && (o.pair.includes(normalized) || o.pair === symbol));
     }
     
     setOrders(fetchedOrders);
@@ -77,7 +69,7 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
         {
           event: '*',
           schema: 'public',
-          table: 'limit_orders',
+          table: 'orders',
         },
         (payload) => {
            fetchOrders();
@@ -130,14 +122,14 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
               // Avoid division by zero
               const filledPct = totalAmt > 0 ? (filledAmt / totalAmt) * 100 : 0;
               
-              const pairDisplay = order.trading_pairs?.symbol ?? 'N/A';
+              const pairDisplay = order.pair ?? 'N/A'; // Use 'pair' column
 
               return (
                 <tr key={order.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-4 py-2">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'N/A'}</td>
                   <td className="px-4 py-2 font-bold text-white">{pairDisplay}</td>
-                  <td className={`px-4 py-2 ${order.side === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
-                      {order.side.toUpperCase()}
+                  <td className={`px-4 py-2 ${order.side?.toLowerCase() === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
+                      {order.side?.toUpperCase()}
                   </td>
                   <td className="px-4 py-2 text-white">${Number(order.price ?? 0).toFixed(2)}</td>
                   <td className="px-4 py-2">{totalAmt.toFixed(6)}</td>
