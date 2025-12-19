@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
     const fileExt = file.name.split('.').pop()
     const fileName = `${user.id}/${timestamp}.${fileExt}`
 
-    // Upload to Supabase Storage 'payment-proofs' bucket
+    // Upload to Supabase Storage 'receipts' bucket
     const { data, error } = await supabase.storage
-      .from('payment-proofs')
+      .from('receipts')
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Get public URL (assuming bucket is public OR we use this path to store)
     const { data: { publicUrl } } = supabase.storage
-      .from('payment-proofs')
+      .from('receipts')
       .getPublicUrl(fileName)
 
     return NextResponse.json({
