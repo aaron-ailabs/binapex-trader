@@ -223,14 +223,16 @@ export interface CreditScoreHistory {
   previous_score: number | null
   new_score: number
   reason: string | null
+  credit_score: number | null
+  credit_score_updated_at: string | null
   changed_by: string | null
   created_at: string
 }
 
 export function getCreditScoreBadge(score: number | null): { color: string; label: string } {
   if (score === null) return { color: "bg-gray-500/10 text-gray-400 border-gray-500/20", label: "Not Rated" }
-  if (score >= 800) return { color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", label: "Excellent" }
-  if (score >= 700) return { color: "bg-blue-500/10 text-blue-400 border-blue-500/20", label: "Good" }
-  if (score >= 600) return { color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20", label: "Fair" }
+  if (score >= 80) return { color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", label: "Excellent" }
+  if (score >= 70) return { color: "bg-blue-500/10 text-blue-400 border-blue-500/20", label: "Good" }
+  if (score >= 60) return { color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20", label: "Fair" }
   return { color: "bg-red-500/10 text-red-500 border-red-500/20", label: "Poor" }
 }

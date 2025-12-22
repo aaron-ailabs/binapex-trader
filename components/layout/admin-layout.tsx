@@ -21,6 +21,7 @@ import {
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { AdminNotificationBell } from "@/components/admin/admin-notification-bell"
 
 const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -30,7 +31,6 @@ const navigation = [
   { name: "Withdrawals", href: "/admin/withdrawals", icon: DollarSign },
   { name: "Trades", href: "/admin/trades", icon: TrendingUp },
   { name: "Support", href: "/admin/support", icon: MessageSquare },
-  { name: "Risk Monitor", href: "/admin/risk", icon: AlertTriangle },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -46,8 +46,30 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-black">
+      {/* Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-30 h-16 bg-card/80 backdrop-blur-md border-b border-border lg:pl-64">
+        <div className="h-full px-4 flex items-center justify-between lg:justify-end">
+          {/* Mobile menu button placeholder for spacing on mobile */}
+          <div className="lg:hidden w-10" />
+          
+          <div className="flex items-center gap-4">
+            <AdminNotificationBell />
+            <div className="hidden sm:block h-6 w-px bg-border" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 hidden sm:flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-3 left-4 z-50">
         <Button
           variant="ghost"
           size="icon"
@@ -118,7 +140,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="lg:ml-64 p-4 md:p-6 lg:p-8 min-h-screen">
+      <main className="lg:ml-64 p-4 md:p-6 lg:p-8 min-h-screen pt-20 lg:pt-24">
         <div className="max-w-7xl mx-auto">{children}</div>
       </main>
 

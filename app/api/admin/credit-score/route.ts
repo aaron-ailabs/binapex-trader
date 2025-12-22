@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    if (typeof score !== "number" || score < 0 || score > 1000) {
-      return NextResponse.json({ error: "Score must be between 0 and 1000" }, { status: 400 })
+    if (typeof score !== "number" || score < 0 || score > 100) {
+      return NextResponse.json({ error: "Score must be between 0 and 100" }, { status: 400 })
     }
 
     // Update credit score

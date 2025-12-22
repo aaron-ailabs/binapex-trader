@@ -28,7 +28,6 @@ export const UpdateUserSchema = z.object({
   phone: z.string().optional(),
   kyc_verified: z.boolean().optional(),
   membership_tier: z.enum(["free", "silver", "gold", "platinum"]).optional(),
-  risk_mode: z.enum(["conservative", "moderate", "aggressive"]).optional(),
   balance_usd: z.number().nonnegative().optional(),
   bonus_balance: z.number().nonnegative().optional(),
 })

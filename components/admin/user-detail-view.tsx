@@ -13,8 +13,9 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { CreditScoreManager } from "@/components/admin/credit-score-manager"
+import { CreditScoreEditModal } from "@/components/admin/credit-score-edit-modal"
 import type { CreditScoreHistory } from "@/lib/types/database"
+import { getCreditScoreBadge } from "@/lib/types/database"
 import { updateUserProfile, creditUserBonus } from "@/app/actions/admin-users"
 
 interface UserDetailViewProps {
@@ -30,10 +31,10 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
   const supabase = createClient()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false)
 
   const [formData, setFormData] = useState({
     membership_tier: user.membership_tier,
-    risk_mode: user.risk_mode || "standard",
     bonus_balance: user.bonus_balance,
     kyc_verified: user.kyc_verified,
     full_name: user.full_name || "",
@@ -139,9 +140,8 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
                   onClick={() => {
                     setIsEditing(false)
                     setFormData({
-                      membership_tier: user.membership_tier,
-                      risk_mode: user.risk_mode || "standard",
-                      bonus_balance: user.bonus_balance,
+                    membership_tier: user.membership_tier,
+                    bonus_balance: user.bonus_balance,
                       kyc_verified: user.kyc_verified,
                       full_name: user.full_name || "",
                       phone: user.phone || "",
@@ -215,28 +215,6 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
               )}
             </div>
 
-            {/* Risk Mode (God Mode) */}
-            <div>
-              <Label className="text-muted-foreground mb-2">Risk Mode (God Mode)</Label>
-              {isEditing ? (
-                <Select
-                  value={formData.risk_mode}
-                  onValueChange={(value) => setFormData({ ...formData, risk_mode: value })}
-                >
-                  <SelectTrigger className="bg-black/50 border-white/10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="winning">Winning (Favored)</SelectItem>
-                    <SelectItem value="losing">Losing (Penalized)</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-white capitalize">{user.risk_mode || "standard"}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">Adjusts execution slippage</p>
-            </div>
 
             {/* Balance */}
             <div>
@@ -319,13 +297,65 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
             <p className="text-3xl font-bold text-white font-mono">{trades.length}</p>
           </GlassCard>
           <GlassCard className="p-6">
+            <h4 className="text-sm text-muted-foreground mb-4 flex items-center justify-between">
+              Credit Score
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 border-white/10"
+                onClick={() => setIsCreditModalOpen(true)}
+              >
+                Edit
+              </Button>
+            </h4>
+            <div className="flex items-center gap-3">
+              <p className="text-3xl font-bold text-white font-mono">{user.credit_score ?? "—"}</p>
+              <Badge variant="outline" className={getCreditScoreBadge(user.credit_score).color}>
+                {getCreditScoreBadge(user.credit_score).label}
+              </Badge>
+            </div>
+          </GlassCard>
+          <GlassCard className="p-6">
             <h4 className="text-sm text-muted-foreground mb-2">Support Tickets</h4>
             <p className="text-3xl font-bold text-white font-mono">{tickets.length}</p>
           </GlassCard>
         </div>
       </div>
 
-      <CreditScoreManager user={user} creditHistory={creditHistory} onUpdate={handleCreditScoreUpdate} />
+      <CreditScoreEditModal
+        isOpen={isCreditModalOpen}
+        onClose={() => setIsCreditModalOpen(false)}
+        currentScore={user.credit_score}
+        userId={user.id}
+        onUpdate={handleCreditScoreUpdate}
+      />
+
+      {/* Credit History */}
+      {creditHistory.length > 0 && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-bold mb-4">Credit Score History</h3>
+          <div className="space-y-4">
+            {creditHistory.map((record) => (
+              <div key={record.id} className="flex items-start justify-between p-3 bg-white/5 rounded-lg border border-white/10">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white">
+                      {record.previous_score ?? "—"} → {record.new_score}
+                    </span>
+                    <Badge variant="outline" className={getCreditScoreBadge(record.new_score).color + " text-[10px] px-1.5 h-4"}>
+                      {getCreditScoreBadge(record.new_score).label}
+                    </Badge>
+                  </div>
+                  {record.reason && <p className="text-xs text-muted-foreground">{record.reason}</p>}
+                </div>
+                <p className="text-[10px] text-muted-foreground uppercase">
+                  {format(new Date(record.created_at), "MMM dd, yyyy")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {/* Activity Tables */}
       <div className="grid gap-6">

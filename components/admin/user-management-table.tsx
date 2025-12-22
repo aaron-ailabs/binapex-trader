@@ -18,7 +18,6 @@ interface User {
   bonus_balance: number
   membership_tier: string
   role: string
-  risk_mode: string
   kyc_verified: boolean
   joined_at: string
   credit_score: number | null
@@ -56,23 +55,13 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
     }
   }
 
-  const getRiskModeColor = (mode: string) => {
-    switch (mode) {
-      case "winning":
-        return "bg-success/10 text-success border-success/20"
-      case "losing":
-        return "bg-destructive/10 text-destructive border-destructive/20"
-      default:
-        return "bg-muted/50 text-muted-foreground border-border"
-    }
-  }
 
   const getCreditScoreBadge = (creditScore: number) => {
-    if (creditScore >= 800) {
+    if (creditScore >= 80) {
       return { color: "bg-success/10 text-success border-success/20", text: "Excellent" }
-    } else if (creditScore >= 700) {
+    } else if (creditScore >= 70) {
       return { color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", text: "Good" }
-    } else if (creditScore >= 600) {
+    } else if (creditScore >= 60) {
       return { color: "bg-primary/10 text-primary border-primary/20", text: "Average" }
     } else {
       return { color: "bg-destructive/10 text-destructive border-destructive/20", text: "Poor" }
@@ -110,9 +99,6 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
                     Tier
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
-                    Risk Mode
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
                     KYC
@@ -170,11 +156,6 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                     <td className="py-3 px-4">
                       <Badge variant="outline" className={getTierColor(user.membership_tier)}>
                         {user.membership_tier}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant="outline" className={getRiskModeColor(user.risk_mode)}>
-                        {user.risk_mode || "standard"}
                       </Badge>
                     </td>
                     <td className="py-3 px-4">

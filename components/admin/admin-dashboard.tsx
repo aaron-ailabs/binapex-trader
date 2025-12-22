@@ -145,15 +145,6 @@ export function AdminDashboard({ initialStats, recentDeposits }: AdminDashboardP
               Manage Users
             </Button>
           </Link>
-          <Link href="/admin/risk">
-            <Button
-              variant="outline"
-              className="w-full justify-start border-border hover:border-primary/50 bg-transparent"
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              Risk Monitor
-            </Button>
-          </Link>
         </div>
       </GlassCard>
     </div>

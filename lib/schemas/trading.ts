@@ -7,7 +7,6 @@ export const CreateOrderSchema = z.object({
   size: z.number().positive("Size must be positive"),
   leverage: z.number().int().min(1).max(100, "Leverage must be between 1 and 100"),
   entry_price: z.number().positive().optional(),
-  risk_mode: z.enum(["conservative", "moderate", "aggressive"]).optional(),
 })
 
 export const CancelOrderSchema = z.object({

@@ -48,7 +48,6 @@ Deno.serve(async (req) => {
           bonus_balance: 0,
           membership_tier: "diamond",
           kyc_verified: true,
-          risk_mode: "neutral",
         })
         .eq("email", adminEmail)
 
@@ -89,7 +88,6 @@ Deno.serve(async (req) => {
         bonus_balance: 0,
         membership_tier: "diamond",
         kyc_verified: true,
-        risk_mode: "neutral",
       })
       .eq("id", authData.user.id)
 

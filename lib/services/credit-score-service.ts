@@ -27,6 +27,10 @@ export class CreditScoreService {
     reason: string,
     adminId: string,
   ): Promise<CreditScoreHistory> {
+    if (newScore < 0 || newScore > 100) {
+      throw new Error("Credit score must be between 0 and 100")
+    }
+
     const supabase = await createClient()
 
     // Get current score for history

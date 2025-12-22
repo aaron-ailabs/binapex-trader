@@ -62,12 +62,14 @@ export function Navbar() {
                     Trader Login
                   </Link>
                 </DropdownMenuItem>
+                {/* 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/admin/login" className="cursor-pointer text-binapex-gold">
                     Admin Portal
                   </Link>
                 </DropdownMenuItem>
+                */}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button asChild className="bg-binapex-gold hover:bg-binapex-gold-dark text-binapex-dark font-semibold">

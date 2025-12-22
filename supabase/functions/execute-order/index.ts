@@ -47,10 +47,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid amount or leverage" }), { status: 400 })
     }
 
-    // Fetch user profile with risk mode
+    // Fetch user profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, balance, risk_mode")
+      .select("id, balance")
       .eq("id", user.id)
       .single()
 
@@ -81,17 +81,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Market price not available" }), { status: 404 })
     }
 
-    // Apply risk-adjusted slippage
-    const riskMode = profile.risk_mode || "normal"
-    const { executedPrice, slippageApplied } = applyRiskSlippage(
-      order_type,
-      marketPrice.price,
-      marketPrice.bid_price,
-      marketPrice.ask_price,
-      riskMode,
-    )
+    // Apply standard slippage
+    const executedPrice = order_type === "buy" ? marketPrice.ask_price : marketPrice.bid_price
+    const slippageApplied = 0 // Using direct market prices now
 
-    console.log(`[v0] Risk mode: ${riskMode}, Slippage: ${slippageApplied}%, Executed: ${executedPrice}`)
+    console.log(`[v0] Standard execution, Executed: ${executedPrice}`)
 
     // Calculate position size
     const totalSize = amount * leverage
@@ -108,7 +102,7 @@ serve(async (req) => {
       p_leverage: leverage,
       p_margin_used: amount,
       p_slippage_applied: slippageApplied,
-      p_risk_mode: riskMode,
+      p_risk_mode: "standard", // Constant now
     })
 
     if (balanceError) {
@@ -129,7 +123,7 @@ serve(async (req) => {
           leverage,
           margin_used: amount,
           slippage_applied: slippageApplied,
-          risk_mode: riskMode,
+          risk_mode: "standard",
         },
         new_balance: newBalance,
       }),
@@ -143,37 +137,3 @@ serve(async (req) => {
     })
   }
 })
-
-// Apply risk-adjusted slippage based on user's risk mode
-function applyRiskSlippage(
-  orderType: "buy" | "sell",
-  marketPrice: number,
-  bidPrice: number,
-  askPrice: number,
-  riskMode: string,
-): { executedPrice: number; slippageApplied: number } {
-  let slippagePercent = 0
-
-  switch (riskMode) {
-    case "winning":
-      // Winning mode: Better prices (positive slippage)
-      slippagePercent = orderType === "buy" ? -0.5 : 0.5 // Buy cheaper, sell higher
-      break
-    case "losing":
-      // Losing mode: Worse prices (negative slippage)
-      slippagePercent = orderType === "buy" ? 0.5 : -0.5 // Buy expensive, sell cheaper
-      break
-    case "normal":
-    default:
-      // Normal mode: Normal bid/ask spread
-      slippagePercent = orderType === "buy" ? 0.05 : -0.05 // Minimal slippage
-      break
-  }
-
-  const executedPrice = marketPrice * (1 + slippagePercent / 100)
-
-  return {
-    executedPrice: Number.parseFloat(executedPrice.toFixed(8)),
-    slippageApplied: Number.parseFloat(slippagePercent.toFixed(4)),
-  }
-}

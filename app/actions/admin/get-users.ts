@@ -12,7 +12,6 @@ export interface AdminUser {
   bonus_balance: number
   membership_tier: string
   role: string
-  risk_mode: string
   kyc_verified: boolean
   joined_at: string
   credit_score: number | null
@@ -108,7 +107,6 @@ export async function getAdminUsersList(): Promise<AdminUser[]> {
         bonus_balance: Number(profile.bonus_balance || 0),
         membership_tier: profile.membership_tier || "silver",
         role: profile.role || "user",
-        risk_mode: profile.risk_mode || "standard",
         kyc_verified: profile.kyc_verified || false,
         joined_at: authUser?.created_at || profile.created_at,
         credit_score: profile.credit_score
