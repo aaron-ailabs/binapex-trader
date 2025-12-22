@@ -2,8 +2,8 @@
 
 import { MessageCircle, Clock, CheckCircle, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useTawk } from "@/components/providers/tawk-provider"
 import { GlassCard } from "@/components/ui/glass-card"
+import { toast } from "sonner"
 
 const faqs = [
   {
@@ -33,7 +33,9 @@ const faqs = [
 ]
 
 export default function LiveChatClient() {
-  const { openChat } = useTawk()
+  const openChat = () => {
+     toast.info("Please use the support widget in the bottom right corner.")
+  }
 
   const handleFaqClick = () => {
     openChat()

@@ -4,7 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/contexts/auth-context"
-import { TawkProvider } from "@/components/providers/tawk-provider"
+import { SupportWidget } from "@/components/support/support-widget"
 import { ErrorBoundary } from "@/components/error-boundary" // Added import for ErrorBoundary
 import "./globals.css"
 
@@ -56,12 +56,9 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <AuthProvider>
-            <TawkProvider
-              propertyId={process.env.NEXT_PUBLIC_TAWK_PROPERTY_ID || ""}
-              widgetId={process.env.NEXT_PUBLIC_TAWK_WIDGET_ID || ""}
-            >
               {children}
-            </TawkProvider>
+              <SupportWidget />
+
           </AuthProvider>
         </ErrorBoundary>
         <Analytics />

@@ -70,9 +70,7 @@ export function AdminTicketDesk({ tickets: initialTickets }: AdminTicketDeskProp
     }
   }
 
-  const openTawkDashboard = () => {
-    window.open("https://dashboard.tawk.to", "_blank")
-  }
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -119,22 +117,7 @@ export function AdminTicketDesk({ tickets: initialTickets }: AdminTicketDeskProp
 
   return (
     <div className="space-y-6">
-      {/* Tawk.to Quick Access */}
-      <GlassCard className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MessageSquare className="h-5 w-5 text-[#F59E0B]" />
-            <div>
-              <p className="font-medium text-white">Live Chat Dashboard</p>
-              <p className="text-sm text-gray-400">Respond to live chat conversations</p>
-            </div>
-          </div>
-          <Button onClick={openTawkDashboard} variant="outline" className="border-white/10 bg-transparent">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Open Tawk.to
-          </Button>
-        </div>
-      </GlassCard>
+
 
       {/* Filters */}
       <div className="flex gap-4 flex-wrap">

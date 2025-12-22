@@ -29,7 +29,7 @@ const navigation = [
   { name: "Assets", href: "/admin/assets", icon: TrendingUp },
   { name: "Withdrawals", href: "/admin/withdrawals", icon: DollarSign },
   { name: "Trades", href: "/admin/trades", icon: TrendingUp },
-  { name: "Support", href: "/admin/tickets", icon: MessageSquare },
+  { name: "Support", href: "/admin/support", icon: MessageSquare },
   { name: "Risk Monitor", href: "/admin/risk", icon: AlertTriangle },
 ]
 

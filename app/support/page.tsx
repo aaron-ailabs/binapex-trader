@@ -15,12 +15,5 @@ export default async function SupportPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-
-  return <SupportClientPage user={user} profile={profile} tickets={tickets} />
+  return <SupportClientPage user={user} profile={profile} />
 }
-
