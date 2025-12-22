@@ -160,11 +160,13 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
             <span>${calculatedFee.toFixed(2)}</span>
         </div>
         
-        {/* Payout Display - Only relevant for logic that implies payout, but user asked for it always */}
+        {/* Payout Display - Hiding per user request */}
+        {/* 
         <div className="flex justify-between items-center py-1">
             <span className="text-gray-400">Payout Rate</span>
             <span className="text-yellow-500 font-bold">{payoutRate}%</span>
         </div>
+        */}
         
         {amountUSD && Number(amountUSD) > 0 && (
           <>

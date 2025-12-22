@@ -281,12 +281,14 @@ export function OrderFormWidget({ symbol = 'BTC-USD', currentPrice = 0, payoutRa
             </div>
         </div>
 
-        {/* TOTAL & PAYOUT */}
+        {/* TOTAL & PAYOUT - Hiding Payout Rate per user request */}
         <div className="flex flex-col gap-1 border-t border-white/5 pt-2">
+            {/* 
             <div className="flex justify-between text-xs text-gray-400">
                 <span>Payout Rate</span>
                 <span className="text-emerald-400 font-bold">{payoutRate}%</span>
             </div>
+            */}
             <div className="flex justify-between items-center">
                  <span className="text-xs text-gray-300">Est. Payout</span>
                  <span className="text-sm font-bold text-white font-mono">

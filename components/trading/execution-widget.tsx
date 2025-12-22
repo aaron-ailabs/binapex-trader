@@ -54,13 +54,15 @@ export function ExecutionWidget({ symbol, currentPrice, payoutRate, balance, onS
 
     return (
         <div className="bg-[#1E1E1E] border border-gray-800 rounded-xl p-4 flex flex-col gap-6 shadow-2xl h-full">
-            {/* Header */}
+            {/* Header - Hiding Payout Rate per user request */}
+            {/* 
             <div className="flex justify-between items-center">
                 <span className="text-gray-400 font-mono text-xs uppercase">Payout Rate</span>
                 <Badge className="bg-amber-500 text-black font-bold text-lg hover:bg-amber-400 transition-colors cursor-default">
                     {payoutRate}%
                 </Badge>
             </div>
+            */}
 
             {/* Step 1: Duration */}
             <div className="space-y-2">
