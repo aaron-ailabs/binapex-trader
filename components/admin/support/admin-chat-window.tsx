@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Send } from "lucide-react"
+import { Send, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -19,9 +19,10 @@ interface Message {
 
 interface AdminChatWindowProps {
   selectedUserId: string | null
+  onBack?: () => void
 }
 
-export function AdminChatWindow({ selectedUserId }: AdminChatWindowProps) {
+export function AdminChatWindow({ selectedUserId, onBack }: AdminChatWindowProps) {
   const { user: currentUser } = useAuth() // Only used to verify auth, though sender_role is hardcoded 'admin'
   const supabase = createClient()
   const [messages, setMessages] = useState<Message[]>([])
@@ -111,9 +112,21 @@ export function AdminChatWindow({ selectedUserId }: AdminChatWindowProps) {
   return (
     <div className="flex h-full flex-col bg-zinc-950">
       {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-950 p-4">
-        <h3 className="font-semibold text-zinc-200">Chat with User</h3>
-        <p className="text-xs text-zinc-500 font-mono">{selectedUserId}</p>
+      <div className="border-b border-zinc-800 bg-zinc-950 p-4 flex items-center gap-3">
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-8 w-8 text-zinc-400 hover:text-white"
+            onClick={onBack}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-zinc-200 truncate">Chat with User</h3>
+          <p className="text-xs text-zinc-500 font-mono truncate">{selectedUserId}</p>
+        </div>
       </div>
 
       {/* Message List */}

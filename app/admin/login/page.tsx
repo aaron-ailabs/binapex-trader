@@ -32,13 +32,13 @@ export default function AdminLoginPage() {
   // Check if user is already authenticated as admin
   useEffect(() => {
     const checkExistingAuth = async () => {
-      console.log("[Admin Auth] Checking existing authentication...")
+      // console.log("[Admin Auth] Checking existing authentication...")
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
 
         if (user) {
-          console.log("[Admin Auth] User found:", user.email)
+          // console.log("[Admin Auth] User found:", user.email)
           const { data: isAdmin, error: rpcError } = await supabase.rpc("is_admin")
           
           if (rpcError) {
@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
       setIsSubmitting(true)
       setError(null)
       setAuthStage("Signing in...")
-      console.log("[Admin Auth] Starting login for:", data.email)
+      // console.log("[Admin Auth] Starting login for:", data.email)
 
       const supabase = createClient()
 

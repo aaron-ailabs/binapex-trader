@@ -7,7 +7,7 @@ interface AdminRouteProps {
 }
 
 export async function AdminRoute({ children }: AdminRouteProps) {
-  console.log("[AdminRoute] Starting admin route validation...")
+  // console.log("[AdminRoute] Starting admin route validation...")
   
   const supabase = await createClient()
   const {
@@ -25,7 +25,7 @@ export async function AdminRoute({ children }: AdminRouteProps) {
     redirect("/admin/login")
   }
 
-  console.log("[AdminRoute] User authenticated:", user.email, "ID:", user.id)
+  // console.log("[AdminRoute] User authenticated:", user.email, "ID:", user.id)
 
   // Use the no-argument version of the RPC to get user role
   console.log("[AdminRoute] Calling get_user_role RPC...")

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         // EODHD Intraday API: https://eodhd.com/api/intraday/{symbol}?api_token={api_token}&fmt=json&interval={interval}
         const url = `https://eodhd.com/api/intraday/${eodhdSymbol}?api_token=${apiKey}&fmt=json&interval=${eodhdInterval}`
         
-        console.log(`[Chart API] Fetching EODHD: ${url.replace(apiKey, "HIDDEN_KEY")}`)
+        // console.log(`[Chart API] Fetching EODHD: ${url.replace(apiKey, "HIDDEN_KEY")}`)
 
         const response = await fetch(url)
         
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       chartData = chartData.slice(-200) // Increase buffer slightly
 
     } catch (e: any) {
-         console.warn(`[Chart API] Provider Error: ${e.message}. Using mock data fallback.`)
+         // console.warn(`[Chart API] Provider Error: ${e.message}. Using mock data fallback.`)
          isMock = true
          
          // Generate base price based on symbol type
