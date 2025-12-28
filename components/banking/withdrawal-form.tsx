@@ -5,7 +5,7 @@ import { GlassCard } from "@/components/ui/glass-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import type { UserBankAccount } from "@/lib/types/database"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -21,18 +21,20 @@ interface WithdrawalFormProps {
   lockedBalance: number
 }
 
-export function WithdrawalForm({ 
-  userBanks, 
-  userId, 
-  currentBalance, 
+export function WithdrawalForm({
+  userBanks,
+  userId,
+  currentBalance,
   bonusBalance,
   totalBalance,
-  lockedBalance 
+  lockedBalance
 }: WithdrawalFormProps) {
   const router = useRouter()
   const supabase = createClient()
   const [selectedBank, setSelectedBank] = useState<UserBankAccount | null>(userBanks[0] || null)
   const [amount, setAmount] = useState("")
+  const [withdrawalPassword, setWithdrawalPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAddingBank, setIsAddingBank] = useState(false)
 
@@ -137,16 +139,17 @@ export function WithdrawalForm({
     try {
       const result = await submitWithdrawal({
         amount: amountNum,
-        user_bank_account_id: selectedBank.id
+        user_bank_account_id: selectedBank.id,
+        withdrawal_password: withdrawalPassword,
       })
 
       if (result.error) throw new Error(result.error)
 
       toast.success("Withdrawal request submitted successfully! Our team will process it shortly.")
-      
+
       // Force balance update
       window.dispatchEvent(new Event("wallet_update"))
-      
+
       setAmount("")
       router.push("/history")
     } catch (error: unknown) {
@@ -246,9 +249,8 @@ export function WithdrawalForm({
             <GlassCard
               key={bank.id}
               onClick={() => setSelectedBank(bank)}
-              className={`p-4 cursor-pointer transition-all ${
-                selectedBank?.id === bank.id ? "border-[#F59E0B] bg-[#F59E0B]/10" : "border-white/10 hover:bg-white/5"
-              }`}
+              className={`p-4 cursor-pointer transition-all ${selectedBank?.id === bank.id ? "border-[#F59E0B] bg-[#F59E0B]/10" : "border-white/10 hover:bg-white/5"
+                }`}
             >
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
@@ -310,9 +312,32 @@ export function WithdrawalForm({
               <p className="text-xs text-gray-500 mt-1">Minimum: $50.00 | Available: ${currentBalance.toFixed(2)}</p>
             </div>
 
+            <div>
+              <Label className="text-gray-400 mb-2">Withdrawal Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your security password"
+                  value={withdrawalPassword}
+                  onChange={(e) => setWithdrawalPassword(e.target.value)}
+                  className="pr-10 bg-black/50 border-white/10"
+                  disabled={isSubmitting}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-gray-400 hover:text-white"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
             <Button
               onClick={handleSubmitWithdrawal}
-              disabled={isSubmitting || !amount || !selectedBank}
+              disabled={isSubmitting || !amount || !selectedBank || !withdrawalPassword}
               className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-black font-bold"
             >
               {isSubmitting ? "Submitting..." : "Request Withdrawal"}

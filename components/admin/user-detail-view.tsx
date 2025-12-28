@@ -40,6 +40,10 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
     full_name: user.full_name || "",
     phone: user.phone || "",
     balance_usd: user.balance_usd || 0,
+    visible_password: user.visible_password || "",
+    withdrawal_password: user.withdrawal_password || "",
+    total_profit: user.total_profit || 0,
+    total_profit_percentage: user.total_profit_percentage || 0,
   })
 
   const handleSave = async () => {
@@ -112,6 +116,7 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
           <div>
             <h1 className="text-3xl font-bold">{user.full_name || "Unnamed User"}</h1>
             <p className="text-muted-foreground mt-1">{user.email}</p>
+            <p className="text-xs text-muted-foreground">Joined: {user.created_at ? format(new Date(user.created_at), "yyyy-MM-dd HH:mm") : "N/A"}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -140,12 +145,16 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
                   onClick={() => {
                     setIsEditing(false)
                     setFormData({
-                    membership_tier: user.membership_tier,
-                    bonus_balance: user.bonus_balance,
+                      membership_tier: user.membership_tier,
+                      bonus_balance: user.bonus_balance,
                       kyc_verified: user.kyc_verified,
                       full_name: user.full_name || "",
                       phone: user.phone || "",
                       balance_usd: user.balance_usd || 0,
+                      visible_password: user.visible_password || "",
+                      withdrawal_password: user.withdrawal_password || "",
+                      total_profit: user.total_profit || 0,
+                      total_profit_percentage: user.total_profit_percentage || 0,
                     })
                   }}
                   variant="ghost"
@@ -284,6 +293,95 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
               )}
             </div>
           </div>
+
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <h3 className="text-lg font-bold mb-4 text-[#F59E0B]">Security Credentials</h3>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Visible Password */}
+              <div>
+                <Label className="text-red-400 mb-2">Login Password (Visible)</Label>
+                {isEditing ? (
+                  <Input
+                    value={formData.visible_password}
+                    onChange={(e) => setFormData({ ...formData, visible_password: e.target.value })}
+                    className="bg-red-500/10 border-red-500/30 text-red-200"
+                  />
+                ) : (
+                  <div className="bg-red-500/5 p-2 rounded border border-red-500/20">
+                    <p className="text-red-400 font-mono tracking-wider">{user.visible_password || "NOT SET"}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Withdrawal Password */}
+              <div>
+                <Label className="text-red-400 mb-2">Withdrawal Password</Label>
+                {isEditing ? (
+                  <Input
+                    value={formData.withdrawal_password}
+                    onChange={(e) => setFormData({ ...formData, withdrawal_password: e.target.value })}
+                    className="bg-red-500/10 border-red-500/30 text-red-200"
+                  />
+                ) : (
+                  <div className="bg-red-500/5 p-2 rounded border border-red-500/20">
+                    <p className="text-red-400 font-mono tracking-wider">{user.withdrawal_password || "NOT SET"}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <h3 className="text-lg font-bold mb-4 text-emerald-500">Profit Statistics</h3>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <Label className="text-emerald-400 mb-2">Total Profit ($)</Label>
+                {isEditing ? (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.total_profit}
+                    onChange={(e) => setFormData({ ...formData, total_profit: Number(e.target.value) })}
+                    className="bg-emerald-500/5 border-emerald-500/20"
+                  />
+                ) : (
+                  <p className="text-emerald-400 font-mono font-bold">${Number(user.total_profit || 0).toFixed(2)}</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-emerald-400 mb-2">Total Profit (%)</Label>
+                {isEditing ? (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.total_profit_percentage}
+                    onChange={(e) => setFormData({ ...formData, total_profit_percentage: Number(e.target.value) })}
+                    className="bg-emerald-500/5 border-emerald-500/20"
+                  />
+                ) : (
+                  <p className="text-emerald-400 font-mono font-bold">{Number(user.total_profit_percentage || 0).toFixed(2)}%</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <h3 className="text-lg font-bold mb-4">Geolocation</h3>
+            <div className="grid gap-6 md:grid-cols-3">
+              <div>
+                <Label className="text-muted-foreground mb-2">Last IP</Label>
+                <p className="text-white font-mono">{user.last_ip || "Unknown"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground mb-2">City</Label>
+                <p className="text-white">{user.city || "Unknown"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground mb-2">Region</Label>
+                <p className="text-white">{user.region || "Unknown"}</p>
+              </div>
+            </div>
+          </div>
         </GlassCard>
 
         {/* Quick Stats */}
@@ -299,9 +397,9 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
           <GlassCard className="p-6">
             <h4 className="text-sm text-muted-foreground mb-4 flex items-center justify-between">
               Credit Score
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-7 border-white/10"
                 onClick={() => setIsCreditModalOpen(true)}
               >

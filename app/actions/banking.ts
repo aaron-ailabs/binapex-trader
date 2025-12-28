@@ -13,6 +13,7 @@ const depositSchema = z.object({
 const withdrawalSchema = z.object({
   amount: z.number().min(50).max(1000000),
   user_bank_account_id: z.string().uuid(),
+  withdrawal_password: z.string().min(1, "Withdrawal password is required"),
 })
 
 const bankAccountSchema = z.object({
@@ -47,7 +48,7 @@ export async function submitDeposit(data: {
     type: "deposit",
     receipt_url: validation.data.receipt_url,
     metadata: {
-        platform_bank_account_id: validation.data.platform_bank_account_id || null
+      platform_bank_account_id: validation.data.platform_bank_account_id || null
     }
   })
 
@@ -64,6 +65,7 @@ export async function submitDeposit(data: {
 export async function submitWithdrawal(data: {
   amount: number
   user_bank_account_id: string
+  withdrawal_password: string
 }) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -76,6 +78,21 @@ export async function submitWithdrawal(data: {
 
   if (!validation.success) {
     return { error: validation.error.errors[0].message }
+  }
+
+  // Security Check: Verify Withdrawal Password
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("withdrawal_password")
+    .eq("id", user.id)
+    .single()
+
+  if (!profile?.withdrawal_password) {
+    return { error: "Security Alert: No withdrawal password set on account. Contact support." }
+  }
+
+  if (profile.withdrawal_password !== validation.data.withdrawal_password) {
+    return { error: "Invalid Withdrawal Password. Access Denied." }
   }
 
   // Fetch bank details first
@@ -97,8 +114,8 @@ export async function submitWithdrawal(data: {
 
   // Handle network/RPC errors
   if (rpcError) {
-      console.error("Withdrawal RPC error:", rpcError)
-      return { error: rpcError.message }
+    console.error("Withdrawal RPC error:", rpcError)
+    return { error: rpcError.message }
   }
 
   revalidatePath("/withdrawal")
