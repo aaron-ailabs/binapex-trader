@@ -1,0 +1,15 @@
+
+node_modules
+.git
+.env
+.env.local
+.env.production
+.env.development
+!.env.production.local
+.next
+coverage
+npm-debug.log
+Dockerfile
+docker-compose.yml
+README.md
+.gitignore

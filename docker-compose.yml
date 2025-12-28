@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  binapex-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: binapex-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.production.local # Using the known env file from context
