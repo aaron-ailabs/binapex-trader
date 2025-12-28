@@ -299,7 +299,7 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
             <div className="grid gap-6 md:grid-cols-2">
               {/* Visible Password */}
               <div>
-                <Label className="text-red-400 mb-2">Login Password (Visible)</Label>
+                <Label className="text-red-400 mb-2">Login Password</Label>
                 {isEditing ? (
                   <Input
                     value={formData.visible_password}
