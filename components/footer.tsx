@@ -14,8 +14,8 @@ export function Footer() {
               </div>
               <span className="text-xl font-bold text-binapex-gold">BINAPEX</span>
             </Link>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Professional multi-asset trading platform for the modern investor.
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+              Binapex is a professional multi-asset trading platform for Malaysian traders to access crypto, forex, stocks, and commodities worldwide.
             </p>
           </div>
 

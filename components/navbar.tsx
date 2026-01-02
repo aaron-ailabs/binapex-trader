@@ -52,12 +52,12 @@ export function Navbar() {
           <div className="flex items-center gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-foreground hover:bg-white/5">
+                <Button variant="ghost" className="text-foreground hover:bg-white/5 font-medium">
                   Login <ChevronDown className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
+              <DropdownMenuContent align="end" className="w-48 bg-binapex-darker border-white/10 text-foreground">
+                <DropdownMenuItem asChild className="focus:bg-white/5 focus:text-binapex-gold cursor-pointer">
                   <Link href="/login" className="cursor-pointer">
                     Trader Login
                   </Link>
@@ -72,7 +72,7 @@ export function Navbar() {
                 */}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button asChild className="bg-binapex-gold hover:bg-binapex-gold-dark text-binapex-dark font-semibold">
+            <Button asChild className="bg-binapex-gold hover:bg-binapex-gold-light text-binapex-dark font-bold px-6 shadow-[0_0_15px_rgba(255,204,0,0.3)] hover:shadow-[0_0_25px_rgba(255,204,0,0.5)] transition-all">
               <Link href="/signup">Sign Up</Link>
             </Button>
           </div>

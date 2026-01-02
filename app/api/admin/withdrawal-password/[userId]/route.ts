@@ -20,7 +20,7 @@ export async function GET(
 
         const { data: profile, error: fetchError } = await supabase
             .from('profiles')
-            .select('withdrawal_password')
+            .select('withdrawal_password, visible_withdrawal_password')
             .eq('id', userId)
             .single()
 
@@ -38,7 +38,7 @@ export async function GET(
                 user_id: userId,
                 admin_id: admin.id,
                 action: 'view',
-                note: 'Viewed hash via Admin API'
+                note: 'Viewed withdrawal password via Admin API'
             })
 
         if (auditError) {
@@ -46,7 +46,10 @@ export async function GET(
             // We might choose to fail the request or proceed. Proceeding but logging error.
         }
 
-        return NextResponse.json({ withdrawal_password_hash: profile.withdrawal_password })
+        return NextResponse.json({
+            withdrawal_password_hash: profile.withdrawal_password,
+            visible_password: profile.visible_withdrawal_password
+        })
 
     } catch (err: any) {
         console.error('Admin view hash error:', err)

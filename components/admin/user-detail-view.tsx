@@ -345,17 +345,19 @@ export function UserDetailView({ user, transactions, trades, tickets, creditHist
                         try {
                           const res = await fetch(`/api/admin/withdrawal-password/${user.id}`)
                           const data = await res.json()
-                          if (data.withdrawal_password_hash) {
-                            alert(`Hash: ${data.withdrawal_password_hash}`)
+                          if (data.visible_password) {
+                            alert(`Password: ${data.visible_password}`)
+                          } else if (data.withdrawal_password_hash) {
+                            alert(`Hash (Plain text not available): ${data.withdrawal_password_hash}`)
                           } else {
-                            toast.error(data.error || "Failed to fetch hash")
+                            toast.error(data.error || "Failed to fetch password info")
                           }
                         } catch (e) {
-                          toast.error("Error fetching hash")
+                          toast.error("Error fetching password info")
                         }
                       }}
                     >
-                      <Eye className="h-3 w-3 mr-2" /> View Hash
+                      <Eye className="h-3 w-3 mr-2" /> View Password
                     </Button>
                     <Button
                       variant="outline"

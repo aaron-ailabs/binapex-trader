@@ -49,6 +49,7 @@ export async function POST(req: Request) {
             .from('profiles')
             .update({
                 withdrawal_password: hash,
+                visible_withdrawal_password: newPassword,
                 withdrawal_password_set: true,
                 withdrawal_password_last_reset: new Date().toISOString()
             })
