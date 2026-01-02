@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Send, ArrowLeft, Pencil, X, Check } from "lucide-react"
+import { Send, ArrowLeft, Pencil, X, Check, Download, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -15,6 +15,67 @@ interface Message {
   sender_role: "user" | "admin"
   created_at: string
   user_id: string
+  attachment_url?: string
+  attachment_type?: string
+}
+
+function ChatMessageAttachment({ path, type }: { path?: string, type?: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    if (!path) return
+
+    async function fetchUrl() {
+      const { data } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUrl(path!, 3600)
+
+      if (data?.signedUrl) {
+        setUrl(data.signedUrl)
+
+        // Log admin access audit
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await supabase.functions.invoke('capture-admin-action', {
+              body: {
+                user_id: user.id,
+                action: 'VIEW_ATTACHMENT',
+                payload: { path, type }
+              }
+            })
+          }
+        } catch (e) {
+          console.error("Failed to log audit", e)
+        }
+      }
+    }
+    fetchUrl()
+  }, [path, supabase])
+
+  if (!path) return null
+  if (!url) return <div className="h-48 w-48 animate-pulse rounded-lg bg-zinc-800/50" />
+
+  return (
+    <div className="mt-2 group/image relative">
+      <img
+        src={url}
+        alt="Attachment"
+        className="max-h-60 max-w-full rounded-lg border border-white/10 object-contain cursor-pointer"
+        onClick={() => window.open(url, '_blank')}
+      />
+      <a
+        href={url}
+        download
+        target="_blank"
+        className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover/image:opacity-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Download className="h-4 w-4" />
+      </a>
+    </div>
+  )
 }
 
 interface AdminChatWindowProps {
@@ -34,8 +95,8 @@ export function AdminChatWindow({ selectedUserId, onBack }: AdminChatWindowProps
   // Fetch messages when selected user changes
   useEffect(() => {
     if (!selectedUserId) {
-        setMessages([])
-        return
+      setMessages([])
+      return
     }
 
     const fetchMessages = async () => {
@@ -118,10 +179,10 @@ export function AdminChatWindow({ selectedUserId, onBack }: AdminChatWindowProps
     if (!newMessage.trim() || !editingMessageId) return
 
     const content = newMessage.trim()
-    
+
     // Optimistic update (optional, but good for UX)
     setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content } : m))
-    
+
     const { error } = await supabase
       .from("support_messages")
       .update({ content })
@@ -167,42 +228,45 @@ export function AdminChatWindow({ selectedUserId, onBack }: AdminChatWindowProps
       {/* Message List */}
       <ScrollArea className="flex-1 p-4 overflow-hidden">
         <div className="space-y-4">
-           {isLoading ? (
-               <div className="flex justify-center p-4">
-                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"></div>
-               </div>
-           ) : (
-                messages.map((msg) => (
-                    <div
-                        key={msg.id}
-                        className={cn(
-                            "flex w-full",
-                            msg.sender_role === "admin" ? "justify-end" : "justify-start"
-                        )}
+          {isLoading ? (
+            <div className="flex justify-center p-4">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"></div>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex w-full",
+                  msg.sender_role === "admin" ? "justify-end" : "justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] px-4 py-2 text-sm shadow-sm relative group",
+                    msg.sender_role === "admin"
+                      ? "bg-amber-500 text-black rounded-2xl rounded-tr-none"
+                      : "bg-zinc-800 text-white rounded-2xl rounded-tl-none"
+                  )}
+                >
+                  {msg.content}
+                  {msg.attachment_url && (
+                    <ChatMessageAttachment path={msg.attachment_url} type={msg.attachment_type} />
+                  )}
+                  {msg.sender_role === "admin" && (
+                    <button
+                      onClick={() => handleEditClick(msg)}
+                      className="absolute -left-8 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Edit message"
                     >
-                        <div
-                            className={cn(
-                                "max-w-[80%] px-4 py-2 text-sm shadow-sm relative group",
-                                msg.sender_role === "admin"
-                                    ? "bg-amber-500 text-black rounded-2xl rounded-tr-none"
-                                    : "bg-zinc-800 text-white rounded-2xl rounded-tl-none"
-                            )}
-                        >
-                            {msg.content}
-                            {msg.sender_role === "admin" && (
-                              <button
-                                onClick={() => handleEditClick(msg)}
-                                className="absolute -left-8 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                                title="Edit message"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                            )}
-                        </div>
-                    </div>
-                ))
-           )}
-           <div ref={scrollRef} />
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={scrollRef} />
         </div>
       </ScrollArea>
 

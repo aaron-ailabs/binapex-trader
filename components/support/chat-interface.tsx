@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Send } from "lucide-react"
+import { Send, Paperclip, Image as ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -14,6 +14,43 @@ interface Message {
   content: string
   sender_role: "user" | "admin"
   created_at: string
+  attachment_url?: string
+  attachment_type?: string
+}
+
+function ChatMessageAttachment({ path, type }: { path?: string, type?: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    if (!path) return
+
+    async function fetchUrl() {
+      // Since bucket is private, we need a signed URL
+      const { data } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUrl(path!, 3600) // 1 hour
+
+      if (data?.signedUrl) {
+        setUrl(data.signedUrl)
+      }
+    }
+    fetchUrl()
+  }, [path, supabase])
+
+  if (!path) return null
+  if (!url) return <div className="h-48 w-48 animate-pulse rounded-lg bg-zinc-800/50" />
+
+  return (
+    <div className="mt-2">
+      <img
+        src={url}
+        alt="Attachment"
+        className="max-h-60 max-w-full rounded-lg border border-white/10 object-contain cursor-pointer"
+        onClick={() => window.open(url, '_blank')}
+      />
+    </div>
+  )
 }
 
 export function ChatInterface() {
@@ -22,6 +59,8 @@ export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Fetch initial messages and subscribe to realtime updates
@@ -83,7 +122,7 @@ export function ChatInterface() {
     // For now we rely on realtime or local state. 
     // Let's rely on the INSERT success or Realtime to add it back to ensure consistency.
     // Or we can add it optimistically.
-    
+
     // Actually, requirement 2 says: "Sending: INSERT... Clear input field. Scroll to bottom."
     // It implies we just fire and forget, and let Realtime pick it up? 
     // Or we should update local state manually to feel instant.
@@ -102,7 +141,48 @@ export function ChatInterface() {
 
     if (error) {
       console.error("Failed to send message:", error)
-      // Logic to restore input if failed could go here
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Validate type (basic)
+    if (!file.type.startsWith('image/')) {
+      alert("Please upload an image file (PNG, JPG)")
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-attachments")
+        .upload(fileName, file)
+
+      if (uploadError) throw uploadError
+
+      // Send message with attachment
+      const { error: msgError } = await supabase.from("support_messages").insert({
+        user_id: user.id,
+        content: "Sent an image",
+        sender_role: "user",
+        attachment_url: fileName,
+        attachment_type: file.type
+      })
+
+      if (msgError) throw msgError
+
+    } catch (err) {
+      console.error("Upload failed", err)
+      alert("Failed to upload image")
+    } finally {
+      setIsUploading(false)
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -121,40 +201,43 @@ export function ChatInterface() {
 
       {/* Message List */}
       <ScrollArea className="flex-1 bg-zinc-950 p-4 overflow-hidden">
-         <div className="space-y-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"></div>
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"></div>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center space-y-2 py-12 text-center text-zinc-500">
+              <p className="text-lg font-medium text-zinc-400">How can we help you today?</p>
+              <p className="text-xs">We usually respond within a few minutes.</p>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex w-full",
+                  msg.sender_role === "user" ? "justify-end" : "justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] px-4 py-2 text-sm shadow-sm",
+                    msg.sender_role === "user"
+                      ? "bg-amber-500 text-black rounded-2xl rounded-tr-none"
+                      : "bg-zinc-800 text-white rounded-2xl rounded-tl-none"
+                  )}
+                >
+                  {msg.content}
+                  {msg.attachment_url && (
+                    <ChatMessageAttachment path={msg.attachment_url} type={msg.attachment_type} />
+                  )}
+                </div>
               </div>
-            ) : messages.length === 0 ? (
-               <div className="flex h-full flex-col items-center justify-center space-y-2 py-12 text-center text-zinc-500">
-                  <p className="text-lg font-medium text-zinc-400">How can we help you today?</p>
-                  <p className="text-xs">We usually respond within a few minutes.</p>
-               </div>
-            ) : (
-                messages.map((msg) => (
-                    <div
-                        key={msg.id}
-                        className={cn(
-                            "flex w-full",
-                            msg.sender_role === "user" ? "justify-end" : "justify-start"
-                        )}
-                    >
-                        <div
-                            className={cn(
-                                "max-w-[80%] px-4 py-2 text-sm shadow-sm",
-                                msg.sender_role === "user"
-                                    ? "bg-amber-500 text-black rounded-2xl rounded-tr-none"
-                                    : "bg-zinc-800 text-white rounded-2xl rounded-tl-none"
-                            )}
-                        >
-                            {msg.content}
-                        </div>
-                    </div>
-                ))
-            )}
-            <div ref={scrollRef} />
-         </div>
+            ))
+          )}
+          <div ref={scrollRef} />
+        </div>
       </ScrollArea>
 
       {/* Input Area */}
@@ -166,6 +249,23 @@ export function ChatInterface() {
             placeholder="Type your message..."
             className="flex-1 border-none bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-amber-500/50"
           />
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/png,image/jpeg,image/jpg"
+            onChange={handleFileUpload}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+            className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+          >
+            {isUploading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-500 border-t-transparent" /> : <Paperclip className="h-4 w-4" />}
+          </Button>
           <Button
             type="submit"
             size="icon"
