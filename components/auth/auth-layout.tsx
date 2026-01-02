@@ -1,6 +1,7 @@
 import type React from "react"
 import Link from "next/link"
-import { ArrowLeft, TrendingUp } from "lucide-react"
+import { Logo } from "@/components/logo"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlassCard } from "@/components/ui/glass-card"
 
@@ -24,12 +25,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
         {/* Logo */}
         <div className="flex justify-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-binapex-gold">
-              <TrendingUp className="h-6 w-6 text-binapex-dark" />
-            </div>
-            <span className="text-2xl font-bold text-binapex-gold">BINAPEX</span>
-          </Link>
+          <Logo layout="vertical" width={160} height={160} />
         </div>
 
         {/* Auth Card */}

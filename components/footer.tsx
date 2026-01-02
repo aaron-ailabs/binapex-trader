@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { TrendingUp, Twitter, Github, Linkedin } from "lucide-react"
+import { Logo } from "@/components/logo"
+import { Twitter, Github, Linkedin } from "lucide-react"
 
 export function Footer() {
   return (
@@ -8,12 +9,7 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-binapex-gold">
-                <TrendingUp className="h-5 w-5 text-binapex-dark" />
-              </div>
-              <span className="text-xl font-bold text-binapex-gold">BINAPEX</span>
-            </Link>
+            <Logo layout="horizontal" width={32} height={32} className="mb-4" />
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
               Binapex is a professional multi-asset trading platform for Malaysian traders to access crypto, forex, stocks, and commodities worldwide.
             </p>

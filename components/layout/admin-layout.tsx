@@ -3,6 +3,7 @@
 import type React from "react"
 
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -51,7 +52,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="h-full px-4 flex items-center justify-between lg:justify-end">
           {/* Mobile menu button placeholder for spacing on mobile */}
           <div className="lg:hidden w-10" />
-          
+
           <div className="flex items-center gap-4">
             <AdminNotificationBell />
             <div className="hidden sm:block h-6 w-px bg-border" />
@@ -88,12 +89,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="p-6 border-b border-border">
-            <Link href="/admin" className="flex items-center gap-2">
-              <div className="text-2xl font-bold text-primary">BINAPEX</div>
-            </Link>
-            <p className="text-xs text-muted-foreground mt-1">Admin Control Panel</p>
+            <Logo layout="horizontal" width={28} height={28} />
+            <p className="text-xs text-muted-foreground mt-2 pl-1">Admin Control Panel</p>
           </div>
 
           {/* Navigation */}

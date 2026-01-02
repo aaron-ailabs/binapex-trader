@@ -11,7 +11,7 @@
   --binapex-dark: #0a0a0a;
   --binapex-darker: #050505;
   --binapex-card: #1a1a1a;
-  --binapex-gold: #d4af37;
+  --binapex-gold: #EBD062;
   --binapex-gold-dark: #b8941f;
   --binapex-gray: #a3a3a3;
 
@@ -21,7 +21,7 @@
   --card-foreground: #fafafa;
   --popover: #1a1a1a;
   --popover-foreground: #fafafa;
-  --primary: #d4af37;
+  --primary: #EBD062;
   --primary-foreground: #000000;
   --secondary: #262626;
   --secondary-foreground: #fafafa;
@@ -96,7 +96,7 @@
   --color-binapex-dark: #0a0a0a;
   --color-binapex-darker: #050505;
   --color-binapex-card: #1a1a1a;
-  --color-binapex-gold: #d4af37;
+  --color-binapex-gold: #EBD062;
   --color-binapex-gold-dark: #b8941f;
   --color-binapex-gray: #a3a3a3;
 
@@ -142,6 +142,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

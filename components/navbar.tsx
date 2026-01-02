@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,14 +18,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-binapex-gold">
-              <TrendingUp className="h-5 w-5 text-binapex-dark" />
-            </div>
-            <span className="text-xl font-bold text-binapex-gold group-hover:text-binapex-gold-dark transition-colors">
-              BINAPEX
-            </span>
-          </Link>
+          <Logo layout="horizontal" width={32} height={32} />
 
           {/* Navigation Links - Hidden on mobile */}
           <div className="hidden md:flex items-center gap-6">

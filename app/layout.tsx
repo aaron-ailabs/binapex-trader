@@ -21,19 +21,15 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
+        url: "/logo-icon.png",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/icon-dark-32x32.png",
+        url: "/logo-icon.png",
         media: "(prefers-color-scheme: dark)",
       },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
     ],
-    apple: "/apple-icon.png",
+    apple: "/logo-icon.png",
   },
 }
 
@@ -56,8 +52,8 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <AuthProvider>
-              {children}
-              <SupportWidget />
+            {children}
+            <SupportWidget />
 
           </AuthProvider>
         </ErrorBoundary>

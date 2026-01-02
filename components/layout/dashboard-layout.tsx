@@ -3,6 +3,7 @@
 import type React from "react"
 
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
@@ -53,16 +54,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         .select("bonus_balance, balance_usd, wallets(balance, asset)")
         .eq("id", user.id)
         .single()
-      
+
       if (profile) {
         // Find USD wallet specifically, handling array or single response structure
         // The join returns an array
         const wallets = profile.wallets as { asset: string; balance: number }[] | null
         const usdWallet = wallets?.find((w) => w.asset === "USD")
-        
+
         const walletBal = usdWallet?.balance ?? profile.balance_usd ?? 0
         const bonusBal = profile.bonus_balance ?? 0
-        
+
         // Total Balance = USD Wallet + Bonus
         setBalance(walletBal + bonusBal)
       }
@@ -75,7 +76,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     window.addEventListener('wallet_update', handleWalletUpdate)
 
     return () => {
-        window.removeEventListener('wallet_update', handleWalletUpdate)
+      window.removeEventListener('wallet_update', handleWalletUpdate)
     }
   }, [])
 
@@ -94,15 +95,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-white/10">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#D97706]">
-              <TrendingUp className="h-5 w-5 text-black" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-[#F59E0B] to-[#FBBF24] bg-clip-text text-transparent">
-              BINAPEX
-            </span>
-          </Link>
+        <div className="mx-6 my-6">
+          <Logo layout="horizontal" width={32} height={32} />
         </div>
 
         {/* Navigation */}
@@ -131,10 +125,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* User Balance Display */}
         <div className="mx-4 mb-2 p-4 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Total Balance</p>
-            <p className="text-xl font-bold text-emerald-400">
-                ${balance !== null ? balance.toFixed(2) : "0.00"}
-            </p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Total Balance</p>
+          <p className="text-xl font-bold text-emerald-400">
+            ${balance !== null ? balance.toFixed(2) : "0.00"}
+          </p>
         </div>
 
         {/* Logout Button */}
@@ -154,12 +148,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
         <header className="md:hidden sticky top-0 z-40 p-4 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#D97706]">
-              <TrendingUp className="h-4 w-4 text-black" />
-            </div>
-            <span className="font-bold text-[#F59E0B]">BINAPEX</span>
-          </Link>
+          <Logo layout="horizontal" width={28} height={28} />
           <Button
             variant="ghost"
             size="icon"
