@@ -31,22 +31,6 @@ export async function requireAuth() {
   return { user, supabase, error: null }
 }
 
-export async function requireAdmin() {
-  const { user, supabase, error } = await requireAuth()
-
-  if (error || !user) {
-    return { user: null, supabase, error: error || "Unauthorized", isAdmin: false }
-  }
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (profile?.role !== "admin") {
-    return { user, supabase, error: "Forbidden: Admin access required", isAdmin: false }
-  }
-
-  return { user, supabase, error: null, isAdmin: true }
-}
-
 export function unauthorizedResponse(message = "Unauthorized") {
   return NextResponse.json({ error: message }, { status: 401 })
 }

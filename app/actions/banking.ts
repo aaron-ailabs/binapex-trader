@@ -63,7 +63,6 @@ export async function submitWithdrawal(data: {
 
     revalidatePath("/withdrawal")
     revalidatePath("/history")
-    revalidatePath("/admin/withdrawals") // Useful for admin testing
     return { success: true }
   } catch (error: any) {
     console.error("Withdrawal processing error:", error)
@@ -101,7 +100,6 @@ export async function submitDeposit(data: {
     }
 
     revalidatePath("/history")
-    revalidatePath("/admin/deposits")
     return { success: true }
   } catch (error: any) {
     console.error("Deposit processing error:", error)

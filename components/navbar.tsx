@@ -56,14 +56,6 @@ export function Navbar() {
                     Trader Login
                   </Link>
                 </DropdownMenuItem>
-                {/* 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/admin/login" className="cursor-pointer text-binapex-gold">
-                    Admin Portal
-                  </Link>
-                </DropdownMenuItem>
-                */}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button asChild className="bg-binapex-gold hover:bg-binapex-gold-light text-binapex-dark font-bold px-6 shadow-[0_0_15px_rgba(255,204,0,0.3)] hover:shadow-[0_0_25px_rgba(255,204,0,0.5)] transition-all">

@@ -88,14 +88,6 @@ export function Footer() {
                   API Docs
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/admin/login"
-                  className="text-sm text-binapex-gold hover:text-binapex-gold-dark transition-colors font-medium"
-                >
-                  Admin Portal
-                </Link>
-              </li>
             </ul>
           </div>
         </div>

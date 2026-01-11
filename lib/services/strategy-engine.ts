@@ -1,10 +1,10 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createServiceClient } from "@/lib/supabase/service"
 
 export class StrategyEngine {
   private supabase
 
   constructor() {
-    this.supabase = createAdminClient()
+    this.supabase = createServiceClient()
   }
 
   /**
