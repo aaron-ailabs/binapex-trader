@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
 import { TrendingUp, TrendingDown, Loader2 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { GlassCard } from "@/components/ui/glass-card"
+import { DurationSelector } from "./duration-selector"
+import { createTrade } from "@/app/actions/trade"
+import { cn } from "@/lib/utils"
 
 interface TradeActionsProps {
   assetId: string
@@ -19,17 +20,22 @@ interface TradeActionsProps {
 }
 
 export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess }: TradeActionsProps) {
-  const supabase = createClient()
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy")
-  const [leverage, setLeverage] = useState([10])
+  const [duration, setDuration] = useState(120)
   const [amount, setAmount] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Calculations
   const investmentAmount = Number.parseFloat(amount) || 0
-  const totalSize = investmentAmount * leverage[0]
-  const marginRequired = investmentAmount
-  const assetQuantity = currentPrice > 0 ? totalSize / currentPrice : 0
+  const payoutRate = 85 // Fixed 85% payout for now
+  const potentialProfit = investmentAmount * (payoutRate / 100)
+  const totalReturn = investmentAmount + potentialProfit
+
+  const handleQuickAmount = (percentage: number) => {
+    if (balance <= 0) return
+    const newAmount = (balance * (percentage / 100)).toFixed(2)
+    setAmount(newAmount)
+  }
 
   const handlePlaceTrade = async () => {
     if (!amount || investmentAmount <= 0) {
@@ -45,21 +51,18 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
     setIsSubmitting(true)
 
     try {
-      const { data, error } = await supabase.functions.invoke("place-order", {
-        body: {
-          symbol,
-          side: orderType,
-          type: "market",
-          size: assetQuantity,
-          leverage: leverage[0],
-          price: currentPrice // Indicative for market order
-        },
-      })
+      // Use Server Action for Binary Trade
+      const result = await createTrade(
+        investmentAmount,
+        symbol,
+        orderType === "buy" ? "UP" : "DOWN",
+        duration,
+        payoutRate
+      )
 
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
+      if (result.error) throw new Error(result.error)
 
-      toast.success(`${orderType === "buy" ? "Long" : "Short"} position opened for ${symbol}`)
+      toast.success(`${orderType === "buy" ? "Call (Up)" : "Put (Down)"} trade opened for ${symbol}`)
       setAmount("")
       onSuccess()
     } catch (error: unknown) {
@@ -79,14 +82,14 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
               className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-bold"
             >
               <TrendingUp className="h-4 w-4 mr-1" />
-              BUY / LONG
+              CALL / UP
             </TabsTrigger>
             <TabsTrigger
               value="sell"
               className="data-[state=active]:bg-red-600 data-[state=active]:text-white font-bold"
             >
               <TrendingDown className="h-4 w-4 mr-1" />
-              SELL / SHORT
+              PUT / DOWN
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -99,29 +102,11 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-gray-400 mb-2 flex justify-between">
-              <span>Leverage</span>
-              <span className="text-white font-mono">{leverage[0]}x</span>
-            </label>
-            <Slider
-              value={leverage}
-              onValueChange={setLeverage}
-              max={100}
-              step={1}
-              className="mt-2"
-              disabled={isSubmitting}
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>1x</span>
-              <span>50x</span>
-              <span>100x</span>
-            </div>
-          </div>
+          <DurationSelector value={duration} onChange={setDuration} />
 
           <div>
             <label className="text-xs text-gray-400 mb-2 block">Investment Amount (USD)</label>
-            <div className="relative">
+            <div className="relative mb-2">
               <span className="absolute left-3 top-3 text-gray-500 font-mono">$</span>
               <Input
                 type="number"
@@ -132,37 +117,52 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
                 disabled={isSubmitting}
               />
             </div>
+            
+            {/* Quick Sizing Buttons */}
+            <div className="grid grid-cols-4 gap-2">
+              {[25, 50, 75, 100].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => handleQuickAmount(pct)}
+                  className="px-2 py-1 text-xs font-medium rounded bg-gray-800 text-gray-400 hover:bg-emerald-500/20 hover:text-emerald-500 border border-transparent hover:border-emerald-500/50 transition-colors"
+                >
+                  {pct === 100 ? "Max" : `${pct}%`}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="bg-white/5 p-3 rounded-lg text-sm space-y-2 font-mono">
             <div className="flex justify-between text-gray-400">
-              <span>Margin Required</span>
-              <span className="text-white">${marginRequired.toFixed(2)}</span>
+              <span>Payout Rate</span>
+              <span className="text-emerald-400">{payoutRate}%</span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>Total Position Size</span>
-              <span className="text-white">${totalSize.toFixed(2)}</span>
+              <span>Potential Profit</span>
+              <span className="text-emerald-400">+${potentialProfit.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Asset Quantity</span>
-              <span className="text-white">{assetQuantity.toFixed(6)}</span>
+            <div className="flex justify-between text-gray-400 border-t border-white/10 pt-2 mt-2">
+              <span>Total Return</span>
+              <span className="text-white font-bold">${totalReturn.toFixed(2)}</span>
             </div>
           </div>
 
           <Button
             onClick={handlePlaceTrade}
             disabled={isSubmitting || !amount || Number(amount) <= 0}
-            className={`w-full font-bold text-base h-12 ${
+            className={cn(
+              "w-full font-bold text-base h-12 transition-all",
               orderType === "buy"
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                : "bg-red-600 hover:bg-red-700 text-white"
-            }`}
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                : "bg-red-600 hover:bg-red-700 text-white shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+            )}
           >
-            {isSubmitting ? <Loader2 className="animate-spin" /> : orderType === "buy" ? "OPEN LONG POSITION" : "OPEN SHORT POSITION"}
+            {isSubmitting ? <Loader2 className="animate-spin" /> : orderType === "buy" ? "CALL (UP)" : "PUT (DOWN)"}
           </Button>
 
           <div className="text-xs text-gray-500 text-center">
-            By placing this order, you agree to the platform's terms and conditions
+            Trade will expire in {duration} seconds
           </div>
         </div>
     </GlassCard>
