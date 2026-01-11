@@ -1,7 +1,11 @@
- import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { updateSession } from "@/lib/supabase/proxy"
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return NextResponse.redirect("https://admin.binapex.my/login", 301)
+  }
   return await updateSession(request)
 }
 
