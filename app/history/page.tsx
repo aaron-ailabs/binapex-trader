@@ -39,6 +39,15 @@ export default async function HistoryPage({
     .order("created_at", { ascending: false })
     .range(from, to)
 
+  // Fetch binary orders with pagination
+  const { data: binaryOrders, count: binaryOrdersCount } = await supabase
+    .from("orders")
+    .select("*", { count: "exact" })
+    .eq("user_id", user.id)
+    .eq("type", "binary")
+    .order("created_at", { ascending: false })
+    .range(from, to)
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -50,9 +59,11 @@ export default async function HistoryPage({
         <HistoryTabs 
           transactions={transactions || []} 
           trades={trades || []} 
+          binaryOrders={binaryOrders || []}
           currentPage={page}
           transactionsCount={transactionsCount || 0}
           tradesCount={tradesCount || 0}
+          binaryOrdersCount={binaryOrdersCount || 0}
           pageSize={PAGE_SIZE}
         />
       </div>

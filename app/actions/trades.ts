@@ -18,6 +18,7 @@ export async function getActiveTrades(): Promise<{ data: Trade[] | null; error: 
     .select('*')
     .eq('user_id', user.id)
     .eq('status', 'OPEN')
+    .eq('type', 'binary')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -41,6 +42,7 @@ export async function getTradeHistory(): Promise<{ data: Trade[] | null; error: 
     .select('*')
     .eq('user_id', user.id)
     .in('status', ['WIN', 'LOSS'])
+    .eq('type', 'binary')
     .order('created_at', { ascending: false })
     .limit(50);
 

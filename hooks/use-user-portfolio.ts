@@ -17,64 +17,67 @@ export function useUserPortfolio() {
   })
   const supabase = createClient()
 
-  useEffect(() => {
-    let isMounted = true
-
-    const fetchPortfolio = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          if (isMounted) setData(prev => ({ ...prev, isLoading: false }))
-          return
-        }
-
-        // Fetch all wallet balances (USD + Assets)
-        const { data: wallets } = await supabase
-          .from('wallets')
-          .select('asset, balance, locked_balance')
-          .eq('user_id', user.id)
-
-        let usdBal = 0
-        const holdingsMap: Record<string, number> = {}
-
-        if (wallets) {
-            wallets.forEach(w => {
-                 if (w.asset === 'USD' || w.asset === 'USDT') {
-                     // Calculate AVAILABLE USD (Balance - Locked)
-                     usdBal += Number(w.balance) - Number(w.locked_balance || 0)
-                 } else {
-                     holdingsMap[w.asset] = Number(w.balance)
-                 }
-            })
-        }
-
-        if (isMounted) {
-          setData({
-            balance_usd: usdBal,
-            holdings: holdingsMap,
-            isLoading: false
-          })
-        }
-      } catch (error) {
-        console.error("Error fetching portfolio:", error)
-        if (isMounted) setData(prev => ({ ...prev, isLoading: false }))
+  const fetchPortfolio = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setData(prev => ({ ...prev, isLoading: false }))
+        return
       }
+
+      const { data: wallets } = await supabase
+        .from('wallets')
+        .select('asset, balance, locked_balance')
+        .eq('user_id', user.id)
+
+      let usdBal = 0
+      const holdingsMap: Record<string, number> = {}
+
+      if (wallets) {
+          wallets.forEach(w => {
+               if (w.asset === 'USD' || w.asset === 'USDT') {
+                   usdBal += Number(w.balance) - Number(w.locked_balance || 0)
+               } else {
+                   holdingsMap[w.asset] = Number(w.balance)
+               }
+          })
+      }
+
+      setData({
+        balance_usd: usdBal,
+        holdings: holdingsMap,
+        isLoading: false
+      })
+    } catch (error) {
+      console.error("Error fetching portfolio:", error)
+      setData(prev => ({ ...prev, isLoading: false }))
     }
-
-    fetchPortfolio()
-
-    // Optional: Subscribe to Realtime changes for Wallets/Portfolio could go here
-    // For now, we stick to fetch on mount/interval or manual refresh trigger integration later
-
-    return () => { isMounted = false }
-  }, [])
-
-  const refetch = async () => {
-      // Re-run the fetch logic - for simplicity, we can just trigger a re-mount or expose the function
-      // But creating a separate function inside useEffect is cleaner. 
-      // For this MVP hook, distinct refetch isn't strictly requested but good to have.
-      // We will rely on parent re-rendering or component mounting for now.
   }
 
-  return { ...data, refetch }
+  useEffect(() => {
+    fetchPortfolio()
+
+    // Subscribe to balance changes
+    const channel = supabase
+      .channel('portfolio_balance')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'wallets' 
+      }, () => {
+        fetchPortfolio()
+      })
+      .subscribe()
+
+    // Listen for custom wallet_update event
+    const handleUpdate = () => fetchPortfolio()
+    window.addEventListener('wallet_update', handleUpdate)
+
+    return () => {
+      supabase.removeChannel(channel)
+      window.removeEventListener('wallet_update', handleUpdate)
+    }
+  }, [])
+
+  return { ...data, refetch: fetchPortfolio }
 }

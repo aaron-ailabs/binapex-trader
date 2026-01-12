@@ -55,31 +55,56 @@ export async function getBatchPrices(): Promise<MarketData[]> {
   const tickers = assets.map(a => a.yahoo_ticker).filter(Boolean);
   const quoteMap: Record<string, any> = {};
 
-  // Parallel fetch from Yahoo
+  // Parallel fetch from multiple sources (Binance for crypto, Yahoo for others)
   try {
-    await Promise.all(tickers.map(async (ticker) => {
+    await Promise.all(assets.map(async (asset) => {
       try {
-        // Reduced interval to 1m for better granularity, simple fetch
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m`;
-        const response = await fetch(yahooUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const meta = data?.chart?.result?.[0]?.meta;
-          if (meta) {
+        const ticker = asset.yahoo_ticker;
+        
+        // 1. If Crypto, try Binance first
+        if (asset.category === 'crypto' || asset.type === 'crypto') {
+          let binanceSymbol = asset.symbol.replace('-', '').replace('/', '') + 'T';
+          
+          // Special mapping for certain symbols
+          if (asset.symbol.startsWith('UNI')) binanceSymbol = 'UNIUSDT';
+          if (asset.symbol.startsWith('MATIC')) binanceSymbol = 'POLUSDT';
+          
+          const bRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSymbol}`, { next: { revalidate: 30 } });
+          if (bRes.ok) {
+            const bData = await bRes.json();
             quoteMap[ticker] = {
-              regularMarketPrice: meta.regularMarketPrice,
-              regularMarketPreviousClose: meta.previousClose,
-              regularMarketChangePercent: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100,
-              regularMarketVolume: meta.regularMarketVolume || 0
+              regularMarketPrice: parseFloat(bData.lastPrice),
+              regularMarketPreviousClose: parseFloat(bData.lastPrice) - parseFloat(bData.priceChange),
+              regularMarketChangePercent: parseFloat(bData.priceChangePercent),
+              regularMarketVolume: parseFloat(bData.volume) || 0
             };
+            return;
+          }
+        }
+
+        // 2. Fallback to Yahoo
+        if (ticker) {
+          const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m`;
+          const response = await fetch(yahooUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 30 }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const meta = data?.chart?.result?.[0]?.meta;
+            if (meta) {
+              quoteMap[ticker] = {
+                regularMarketPrice: meta.regularMarketPrice,
+                regularMarketPreviousClose: meta.previousClose,
+                regularMarketChangePercent: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100,
+                regularMarketVolume: meta.regularMarketVolume || 0
+              };
+            }
           }
         }
       } catch (err) {
-        console.warn(`Failed to fetch quote for ${ticker}:`, err);
+        console.warn(`Failed to fetch quote for ${asset.symbol}:`, err);
       }
     }));
   } catch (globalErr) {

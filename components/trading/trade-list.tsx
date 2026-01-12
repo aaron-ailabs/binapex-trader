@@ -34,36 +34,40 @@ export function TradeList() {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // Listen to INSERT and UPDATE
           schema: 'public',
           table: 'orders',
+          filter: 'type=eq.binary'
         },
         (payload) => {
-          const newOrder = payload.new as Trade
-          const oldOrder = payload.old as Trade
-
-          // If status changed from OPEN to WIN or LOSS
-          if (oldOrder.status === 'OPEN' && (newOrder.status === 'WIN' || newOrder.status === 'LOSS')) {
-            // Trigger UI Updates
+          if (payload.eventType === 'INSERT') {
             refreshTrades()
-            
-            // Dispatch Wallet Update Event for Layout
-            window.dispatchEvent(new Event('wallet_update'))
+            return
+          }
 
-            // Show Toast
-            if (newOrder.status === 'WIN') {
-                const profit = newOrder.amount * (1 + (newOrder.payout_rate ?? 0) / 100) - newOrder.amount // Approximate logic if profit_loss not set? 
-                // Actually orders table has profit_loss usually. Let's check payload.
-                // But payload might just have the raw columns. 
-                // Let's assume profit_loss is populating or stick to generic message if null.
-                const winAmount = newOrder.profit_loss ?? (newOrder.amount * (newOrder.payout_rate ?? 85) / 100)
-                toast.success(`Trade Won! +$${winAmount.toFixed(2)}`, {
-                    description: `${newOrder.asset_symbol} ${newOrder.direction}`
-                })
-            } else {
-                toast.error(`Trade Loss -$${newOrder.amount.toFixed(2)}`, {
-                    description: `${newOrder.asset_symbol} ${newOrder.direction}`
-                })
+          if (payload.eventType === 'UPDATE') {
+            const newOrder = payload.new as Trade
+            const oldOrder = payload.old as Trade
+
+            // If status changed from OPEN to WIN or LOSS
+            if (oldOrder.status === 'OPEN' && (newOrder.status === 'WIN' || newOrder.status === 'LOSS')) {
+              // Trigger UI Updates
+              refreshTrades()
+              
+              // Dispatch Wallet Update Event for Layout
+              window.dispatchEvent(new Event('wallet_update'))
+
+              // Show Toast
+              if (newOrder.status === 'WIN') {
+                  const winAmount = newOrder.profit_loss ?? (newOrder.amount * (newOrder.payout_rate ?? 85) / 100)
+                  toast.success(`Trade Won! +$${winAmount.toFixed(2)}`, {
+                      description: `${newOrder.asset_symbol} ${newOrder.direction}`
+                  })
+              } else {
+                  toast.error(`Trade Loss -$${newOrder.amount.toFixed(2)}`, {
+                      description: `${newOrder.asset_symbol} ${newOrder.direction}`
+                  })
+              }
             }
           }
         }

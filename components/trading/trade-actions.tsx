@@ -13,13 +13,13 @@ import { cn } from "@/lib/utils"
 
 interface TradeActionsProps {
   assetId: string
-  symbol: string
+  asset_symbol: string
   currentPrice: number
   balance: number
   onSuccess: () => void
 }
 
-export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess }: TradeActionsProps) {
+export function TradeActions({ assetId, asset_symbol, currentPrice, balance, onSuccess }: TradeActionsProps) {
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy")
   const [duration, setDuration] = useState(120)
   const [amount, setAmount] = useState("")
@@ -54,7 +54,7 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
       // Use Server Action for Binary Trade
       const result = await createTrade(
         investmentAmount,
-        symbol,
+        asset_symbol,
         orderType === "buy" ? "UP" : "DOWN",
         duration,
         payoutRate
@@ -62,7 +62,7 @@ export function TradeActions({ assetId, symbol, currentPrice, balance, onSuccess
 
       if (result.error) throw new Error(result.error)
 
-      toast.success(`${orderType === "buy" ? "Call (Up)" : "Put (Down)"} trade opened for ${symbol}`)
+      toast.success(`${orderType === "buy" ? "Call (Up)" : "Put (Down)"} trade opened for ${asset_symbol}`)
       setAmount("")
       onSuccess()
     } catch (error: unknown) {

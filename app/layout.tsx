@@ -5,7 +5,8 @@ import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/contexts/auth-context"
 import { SupportWidget } from "@/components/support/support-widget"
-import { ErrorBoundary } from "@/components/error-boundary" // Added import for ErrorBoundary
+import { ErrorBoundary } from "@/components/error-boundary"
+import { MaintenanceGuard } from "@/components/maintenance-guard"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -52,9 +53,10 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <AuthProvider>
-            {children}
-            <SupportWidget />
-
+            <MaintenanceGuard>
+              {children}
+              <SupportWidget />
+            </MaintenanceGuard>
           </AuthProvider>
         </ErrorBoundary>
         <Analytics />

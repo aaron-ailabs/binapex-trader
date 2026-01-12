@@ -5,27 +5,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { GlassCard } from "@/components/ui/glass-card"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
-import type { Transaction, Trade, Asset } from "@/lib/types/database"
+import type { Transaction, Trade, Asset, BinaryOrder } from "@/lib/types/database"
 import { format } from "date-fns"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, TrendingUp, TrendingDown } from "lucide-react"
 
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
 interface HistoryTabsProps {
   transactions: Transaction[]
   trades: (Trade & { asset?: Asset })[]
+  binaryOrders: BinaryOrder[]
   currentPage: number
   transactionsCount: number
   tradesCount: number
+  binaryOrdersCount: number
   pageSize: number
 }
 
 export function HistoryTabs({ 
   transactions, 
   trades,
+  binaryOrders,
   currentPage,
   transactionsCount,
   tradesCount,
+  binaryOrdersCount,
   pageSize
 }: HistoryTabsProps) {
   const [activeTab, setActiveTab] = useState("transactions")
@@ -59,12 +63,14 @@ export function HistoryTabs({
 
   const transactionsPages = Math.ceil(transactionsCount / pageSize)
   const tradesPages = Math.ceil(tradesCount / pageSize)
+  const binaryPages = Math.ceil(binaryOrdersCount / pageSize)
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-md grid-cols-2 bg-black/20">
-        <TabsTrigger value="transactions">Financial Transactions</TabsTrigger>
+      <TabsList className="grid w-full max-w-xl grid-cols-3 bg-black/20">
+        <TabsTrigger value="transactions">Transactions</TabsTrigger>
         <TabsTrigger value="trades">Trade History</TabsTrigger>
+        <TabsTrigger value="binary">Binary Options</TabsTrigger>
       </TabsList>
 
       <TabsContent value="transactions" className="mt-6">
@@ -236,6 +242,102 @@ export function HistoryTabs({
               ]}
             />
             <PaginationControls totalPages={tradesPages} currentPage={currentPage} />
+            </>
+          )}
+        </GlassCard>
+      </TabsContent>
+
+      <TabsContent value="binary" className="mt-6">
+        <GlassCard className="p-6">
+          {binaryOrders.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <p>No binary trades found</p>
+            </div>
+          ) : (
+            <>
+            <DataTable
+              data={binaryOrders}
+              columns={[
+                {
+                  header: "Date",
+                  accessor: (row: BinaryOrder) => (
+                    <div>
+                      <div className="text-white">{format(new Date(row.created_at), "MMM dd, yyyy")}</div>
+                      <div className="text-xs text-gray-400">{format(new Date(row.created_at), "HH:mm")}</div>
+                    </div>
+                  ),
+                },
+                {
+                  header: "Asset",
+                  accessor: (row: BinaryOrder) => (
+                    <span className="text-white font-medium">{row.asset_symbol}</span>
+                  ),
+                },
+                {
+                  header: "Direction",
+                  accessor: (row: BinaryOrder) => (
+                    <Badge
+                      variant="outline"
+                      className={
+                        row.direction === "UP"
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                          : "bg-red-500/10 text-red-500 border-red-500/20"
+                      }
+                    >
+                      {row.direction === "UP" ? <TrendingUp size={14} className="mr-1" /> : <TrendingDown size={14} className="mr-1" />}
+                      {row.direction === "UP" ? "HIGH" : "LOW"}
+                    </Badge>
+                  ),
+                },
+                {
+                  header: "Amount",
+                  accessor: (row: BinaryOrder) => <span className="font-mono text-white">${row.amount.toFixed(2)}</span>,
+                },
+                {
+                  header: "Strike",
+                  accessor: (row: BinaryOrder) => <span className="font-mono text-gray-400">${row.strike_price.toFixed(2)}</span>,
+                },
+                {
+                  header: "Exit",
+                  accessor: (row: BinaryOrder) => (
+                    <span className="font-mono text-white">
+                      {row.exit_price ? `$${row.exit_price.toFixed(2)}` : "-"}
+                    </span>
+                  ),
+                },
+                {
+                  header: "Payout %",
+                  accessor: (row: BinaryOrder) => <span className="font-mono text-amber-500">{row.payout_rate}%</span>,
+                },
+                {
+                  header: "Profit/Loss",
+                  accessor: (row: BinaryOrder) => {
+                    if (row.status === "OPEN") return <span className="text-gray-500 font-mono">--</span>
+                    const pl = row.profit_loss ?? (row.status === "WIN" ? (row.amount * row.payout_rate / 100) : -row.amount)
+                    return (
+                        <span
+                          className={`font-mono font-bold ${pl >= 0 ? "text-emerald-500" : "text-red-500"}`}
+                        >
+                          {pl >= 0 ? "+" : ""}${pl.toFixed(2)}
+                        </span>
+                    )
+                  },
+                },
+                {
+                  header: "Status",
+                  accessor: (row: BinaryOrder) => (
+                    <Badge variant="outline" className={
+                      row.status === "OPEN" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                      row.status === "WIN" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                      "bg-red-500/10 text-red-500 border-red-500/20"
+                    }>
+                      {row.status}
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
+            <PaginationControls totalPages={binaryPages} currentPage={currentPage} />
             </>
           )}
         </GlassCard>

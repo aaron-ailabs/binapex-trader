@@ -12,18 +12,18 @@ import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
 
 // Dynamic import for Chart
-const CandlestickChart = dynamic(
-  () => import('./candlestick-chart').then(mod => mod.CandlestickChart),
-  { ssr: false }
+const TradingViewWidget = dynamic(
+    () => import('./tradingview-widget').then(mod => mod.TradingViewWidget),
+    { ssr: false }
 )
 
 interface AssetInfo {
-  symbol: string
-  price?: number
-  rate?: number
-  change_pct?: number
-  payout_rate?: number
-  [key: string]: any 
+    symbol: string
+    price?: number
+    rate?: number
+    change_pct?: number
+    payout_rate?: number
+    [key: string]: any
 }
 
 interface DashboardData {
@@ -43,12 +43,12 @@ export function BinaryOptionsInterface({ initialBalance = 0 }: BinaryOptionsInte
     const [selectedSymbol, setSelectedSymbol] = useState(searchParams.get('asset') || "BTC/USD")
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
     const [payoutRate, setPayoutRate] = useState(85)
-    
+
     // Hooks
     const { candles, currentPrice: hookPrice, change24h: hookChange } = useMarketData(selectedSymbol)
     const { balance_usd, isLoading: isPortfolioLoading } = useUserPortfolio()
     const supabase = createClient()
-    
+
     // Determine effective balance: prefer client-side real data if available and non-zero
     // but fallback to initial server-side balance to avoid "0.00" flash
     const effectiveBalance = (balance_usd > 0) ? balance_usd : initialBalance;
@@ -57,7 +57,7 @@ export function BinaryOptionsInterface({ initialBalance = 0 }: BinaryOptionsInte
     useEffect(() => {
         const asset = searchParams.get('asset')
         if (asset && asset !== selectedSymbol) {
-             setSelectedSymbol(asset)
+            setSelectedSymbol(asset)
         }
     }, [searchParams])
 
@@ -82,19 +82,19 @@ export function BinaryOptionsInterface({ initialBalance = 0 }: BinaryOptionsInte
     // 3. Fetch specific Payout Rate from DB (or get from dashboard)
     useEffect(() => {
         const fetchAssetInfo = async () => {
-             const { data } = await supabase
+            const { data } = await supabase
                 .from('assets')
                 .select('payout_rate')
                 .eq('symbol', selectedSymbol)
                 .single()
-             
-             if (data && data.payout_rate) setPayoutRate(data.payout_rate)
+
+            if (data && data.payout_rate) setPayoutRate(data.payout_rate)
         }
         fetchAssetInfo()
     }, [selectedSymbol])
 
     // Derived Data for Display
-    const currentAssetInfo = dashboardData 
+    const currentAssetInfo = dashboardData
         ? Object.values(dashboardData)
             .flatMap((cat) => Object.values(cat) as AssetInfo[])
             .find((asset) => asset.symbol === selectedSymbol) || null
@@ -108,10 +108,10 @@ export function BinaryOptionsInterface({ initialBalance = 0 }: BinaryOptionsInte
     }
 
     if (isPortfolioLoading && initialBalance === 0) {
-         // Only block if we have NO data
+        // Only block if we have NO data
         return <div className="flex h-screen items-center justify-center bg-black"><Loader2 className="animate-spin text-amber-500" /></div>
     }
-    
+
     const stocks = dashboardData?.stocks || {}
     const forex = dashboardData?.forex || {}
     const crypto = dashboardData?.crypto || {}
@@ -119,35 +119,23 @@ export function BinaryOptionsInterface({ initialBalance = 0 }: BinaryOptionsInte
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 min-h-[calc(100vh-80px)] flex flex-col gap-6">
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[600px]">
                 {/* Column 1: CHART (Previously Asset Intelligence) (6 cols) */}
                 <div className="lg:col-span-6 h-full min-h-[400px] flex flex-col gap-4">
-                     <GlassCard className="flex-1 p-1 overflow-hidden relative border border-white/5 bg-black/40">
-                         {/* Header Overlay */}
-                         <div className="absolute top-4 left-4 z-10 flex flex-col">
-                             <h1 className="text-3xl font-black text-white tracking-tighter shadow-black drop-shadow-md">{selectedSymbol}</h1>
-                             <div className="flex items-center gap-2">
-                                <span className="text-2xl font-bold text-amber-500 font-mono">${price.toFixed(price > 1000 ? 2 : 5)}</span>
-                                {hookChange !== 0 && (
-                                     <span className={`text-sm font-bold ${hookChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                         {hookChange > 0 ? '+' : ''}{(hookChange * 100).toFixed(2)}%
-                                     </span>
-                                )}
-                             </div>
-                         </div>
-                         <CandlestickChart symbol={selectedSymbol} data={candles} />
-                     </GlassCard>
+                    <GlassCard className="flex-1 p-0 overflow-hidden relative border border-white/5 bg-black/40">
+                        <TradingViewWidget symbol={selectedSymbol} />
+                    </GlassCard>
                 </div>
 
                 {/* Column 2: Execution Widget (3 cols) */}
                 <div className="lg:col-span-3 h-full">
-                    <ExecutionWidget 
-                        symbol={selectedSymbol}
+                    <ExecutionWidget
+                        asset_symbol={selectedSymbol}
                         currentPrice={price}
                         payoutRate={payoutRate}
                         balance={effectiveBalance}
-                        onSuccess={() => {}}
+                        onSuccess={() => { }}
                     />
                 </div>
 

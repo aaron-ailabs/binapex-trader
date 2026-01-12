@@ -4,6 +4,7 @@ import type React from "react"
 
 import Link from "next/link"
 import { Logo } from "@/components/logo"
+import { UserNotificationBell } from "@/components/notifications/user-notification-bell"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
@@ -146,17 +147,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-40 p-4 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
-          <Logo layout="horizontal" width={28} height={28} />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="text-white"
-          >
-            {isMobileMenuOpen ? <X /> : <Menu />}
-          </Button>
+        {/* Header (Desktop & Mobile) */}
+        <header className="sticky top-0 z-40 p-4 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <div className="md:hidden">
+              <Logo layout="horizontal" width={28} height={28} />
+            </div>
+            {/* Optional: Page Title or Breadcrumb could go here */}
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-4">
+            <UserNotificationBell />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-white md:hidden"
+            >
+              {isMobileMenuOpen ? <X /> : <Menu />}
+            </Button>
+          </div>
         </header>
 
         {/* Page Content */}

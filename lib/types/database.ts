@@ -174,6 +174,22 @@ export interface Trade {
   created_at: string
 }
 
+export interface BinaryOrder {
+  id: string
+  user_id: string
+  asset_symbol: string
+  direction: "UP" | "DOWN"
+  amount: number
+  strike_price: number
+  payout_rate: number
+  status: "OPEN" | "WIN" | "LOSS"
+  end_time: string
+  exit_price: number | null
+  profit_loss: number | null
+  created_at: string
+  updated_at: string
+}
+
 
 
 export interface AutoTradeStrategy {
