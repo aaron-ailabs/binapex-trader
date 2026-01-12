@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export interface Candle {
   time: string | number;
@@ -22,7 +23,7 @@ export function useMarketData(symbol: string): MarketDataHook {
   const [change24h, setChange24h] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Ref to track if component is mounted to prevent state updates after unmount
   const isMounted = useRef(true);
 
@@ -40,7 +41,7 @@ export function useMarketData(symbol: string): MarketDataHook {
         const res = await fetch(`/api/market/history?symbol=${encodeURIComponent(symbol)}`);
         if (!res.ok) throw new Error('Failed to load history');
         const data = await res.json();
-        
+
         if (active && Array.isArray(data)) {
           setCandles(data);
           // Set initial price from last candle if available
@@ -59,36 +60,59 @@ export function useMarketData(symbol: string): MarketDataHook {
     return () => { active = false; };
   }, [symbol]);
 
-  // 2. Poll for Live Quote
+  // 2. Realtime Subscription & Polling Fallback
   useEffect(() => {
+    if (!symbol) return;
     let active = true;
+    const supabase = createClient();
 
     async function fetchQuote() {
       try {
         const res = await fetch(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`);
         if (!res.ok) return;
         const data = await res.json();
-        
+
         if (active && data.price) {
           setCurrentPrice(data.price);
           setChange24h(data.changePercent);
-          
-          // Optional: Update document title
           document.title = `${data.price.toLocaleString()} | ${symbol}`;
         }
-      } catch (err) {
-        // Silent fail for polling
-      }
+      } catch (err) { }
     }
 
-    // Initial fetch
+    // 2.1 Initial Load and Realtime Setup
+    let channel: any = null;
+
+    const setupRealtime = async () => {
+      // Get the asset_id for this symbol
+      const { data: asset } = await supabase.from('assets').select('id').eq('symbol', symbol).single();
+      if (!asset || !active) return;
+
+      channel = supabase
+        .channel(`price-updates-${asset.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'market_prices', filter: `asset_id=eq.${asset.id}` },
+          (payload) => {
+            if (active && payload.new) {
+              setCurrentPrice(payload.new.price);
+              setChange24h(payload.new.change_24h);
+            }
+          }
+        )
+        .subscribe();
+    };
+
     fetchQuote();
-    
-    // Interval
-    const interval = setInterval(fetchQuote, 2000);
-    return () => { 
+    setupRealtime();
+
+    // Slow fallback interval (30s) instead of 2s
+    const interval = setInterval(fetchQuote, 30000);
+
+    return () => {
       active = false;
-      clearInterval(interval); 
+      if (channel) supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [symbol]);
 

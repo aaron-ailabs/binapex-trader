@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Send, Paperclip, Check, CheckCheck } from "lucide-react"
+import { Send, Paperclip, Check, CheckCheck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -54,7 +54,7 @@ function ChatMessageAttachment({ path, type }: { path?: string, type?: string })
   )
 }
 
-export function ChatInterface() {
+export function ChatInterface({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth()
   const supabase = createClient()
   const [messages, setMessages] = useState<Message[]>([])
@@ -189,12 +189,7 @@ export function ChatInterface() {
   return (
     <div className="flex h-full flex-col bg-[#0b141a] min-h-0 relative">
       {/* WhatsApp Default Wallpaper Pattern Overlay */}
-      <div className="absolute inset-0 opacity-[0.06] pointer-events-none"
-        style={{
-          backgroundImage: `url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")`,
-          backgroundRepeat: 'repeat'
-        }}
-      />
+      <div className="absolute inset-0 bg-whatsapp-pattern" />
 
       {/* Header */}
       <div className="flex items-center justify-between bg-[#202c33] p-3 px-4 shadow-sm z-10 border-b border-[#202c33]">
@@ -210,6 +205,18 @@ export function ChatInterface() {
             <span className="text-xs text-zinc-400 mt-1">Online 24/7</span>
           </div>
         </div>
+
+        {/* Header Close Button (Mobile Only) */}
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="md:hidden text-zinc-400 hover:text-zinc-100 hover:bg-[#2a3942]"
+          >
+            <X className="h-6 w-6" />
+          </Button>
+        )}
       </div>
 
       {/* Message List */}
@@ -291,6 +298,8 @@ export function ChatInterface() {
           className="hidden"
           accept="image/png,image/jpeg,image/jpg"
           onChange={handleFileUpload}
+          aria-label="Upload attachment"
+          title="Upload attachment"
         />
 
         <form onSubmit={handleSendMessage} className="flex-1 flex items-end gap-2 mb-1">

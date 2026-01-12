@@ -22,7 +22,7 @@ export function SupportWidget() {
             : "translate-y-4 opacity-0 scale-95 pointer-events-none"
         )}
       >
-        <ChatInterface />
+        <ChatInterface onClose={() => setIsOpen(false)} />
       </div>
 
       {/* Floating Action Button */}
@@ -31,7 +31,8 @@ export function SupportWidget() {
         size="icon"
         className={cn(
           "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-xl transition-all duration-300 hover:scale-105",
-          isOpen ? "bg-zinc-800 text-white hover:bg-zinc-700" : "bg-amber-500 text-black hover:bg-amber-400"
+          "md:flex", // Always show on desktop
+          isOpen ? "bg-zinc-800 text-white hover:bg-zinc-700 hidden" : "bg-amber-500 text-black hover:bg-amber-400 flex" // Hide on mobile when open
         )}
       >
         {isOpen ? (

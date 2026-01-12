@@ -7,11 +7,17 @@ import type { NextRequest } from "next/server"
 import { captureApiError } from "@/lib/utils/error-handler"
 
 const CreateOrderSchema = z.object({
-  asset_id: z.string().uuid(),
+  asset_id: z.string().uuid().optional(),
+  symbol: z.string().optional(),
+  pair: z.string().optional(),
   order_type: z.enum(["buy", "sell"]),
-  price: z.number().positive(),
+  type: z.enum(["limit", "market", "stop_limit"]).default("limit"),
+  price: z.number().nonnegative().optional(), // Market orders might use 0 or null
   quantity: z.number().positive(),
-})
+  triggerPrice: z.number().positive().optional()
+}).refine(data => data.asset_id || data.symbol || data.pair, {
+  message: "Must provide asset_id, symbol, or pair"
+});
 
 export async function POST(request: NextRequest) {
   let userId: string | undefined
@@ -34,60 +40,52 @@ export async function POST(request: NextRequest) {
     userId = user.id
     body = await request.json()
 
-    // 1. Normalize Inputs
-    // support both camelCase and snake_case for maximum compatibility during transition
-    const symbol = body.symbol || body.pair
-    const side = (body.order_type || body.side || '').toLowerCase()
-    const type = (body.type || 'limit').toLowerCase()
-    const quantity = parseFloat(body.quantity || body.amount || '0')
-    const price = parseFloat(body.price || '0')
+    // 1. Validate Input using Zod
+    const result = CreateOrderSchema.safeParse(body)
 
-    if (!symbol || !side || !quantity) {
-        return Response.json({ error: "Missing required fields (symbol, side, quantity)" }, { status: 400 })
+    if (!result.success) {
+      return Response.json({ error: "Invalid input", details: result.error.format() }, { status: 400 })
     }
 
-    if (!['buy', 'sell'].includes(side)) {
-        return Response.json({ error: "Invalid side. Must be 'buy' or 'sell'" }, { status: 400 })
-    }
+    const { asset_id, order_type, price, quantity, type, triggerPrice } = result.data
+    const side = order_type.toLowerCase()
 
-    if (!['limit', 'market', 'stop_limit'].includes(type)) {
-        return Response.json({ error: "Invalid order type" }, { status: 400 })
-    }
-    
-    // 2. Resolve Trading Pair
+    // We expect 'asset_id' to be the TRADING PAIR ID if the frontend sends it, 
+    // OR we expect a 'pair'/'symbol' string.
+    // The previous code handled 'symbol' but the schema asked for 'asset_id' (UUID).
+    // Let's support both for backward compat but ENFORCE strictness.
+
     let tradingPairId: string | null = null;
-    const cleanSymbol = symbol.replace(/[^a-zA-Z0-9]/g, '');
 
-    const { data: pair } = await supabase
+    // Check if body provided a UUID directly (Best Practice)
+    if (z.string().uuid().safeParse(body.asset_id).success) {
+      tradingPairId = body.asset_id
+    } else {
+      // Strict Symbol Lookup (No Fuzzy Matching)
+      const rawSymbol = body.symbol || body.pair
+
+      if (!rawSymbol) {
+        return Response.json({ error: "Missing symbol or asset_id" }, { status: 400 })
+      }
+
+      const cleanSymbol = rawSymbol.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase(); // Allow hyphen
+
+      const { data: pair } = await supabase
         .from('trading_pairs')
-        .select('id, symbol, is_active')
-        .or(`symbol.eq.${symbol},symbol.eq.${cleanSymbol}`)
+        .select('id, is_active')
+        .eq('symbol', cleanSymbol) // STRICT MATCH
         .single();
-    
-    if (pair) {
+
+      if (pair) {
         if (!pair.is_active) {
-            return Response.json({ error: `Trading pair ${symbol} is currently frozen` }, { status: 403 })
+          return Response.json({ error: `Trading pair ${rawSymbol} is frozen` }, { status: 403 })
         }
         tradingPairId = pair.id
-    } else {
-        // Fallback search
-        const { data: fallbackPair } = await supabase
-            .from('trading_pairs')
-            .select('id, is_active')
-            .ilike('symbol', `%${cleanSymbol}%`)
-            .limit(1)
-            .single();
-        
-        if (fallbackPair) {
-            if (!fallbackPair.is_active) {
-                return Response.json({ error: `Trading pair ${symbol} is currently frozen` }, { status: 403 })
-            }
-            tradingPairId = fallbackPair.id;
-        }
+      }
     }
 
     if (!tradingPairId) {
-        return Response.json({ error: `Invalid trading pair: ${symbol}` }, { status: 400 })
+      return Response.json({ error: "Invalid trading pair ID or Symbol" }, { status: 400 })
     }
 
     // 3. Atomic Order Placement (Spot/Exchange Engine)
@@ -99,30 +97,26 @@ export async function POST(request: NextRequest) {
       p_type: type,
       p_price: price,
       p_amount: quantity,
-      p_trigger_price: body.triggerPrice || null
+      p_trigger_price: triggerPrice || null
     })
 
     if (rpcError) {
-        throw new Error(rpcError.message)
+      throw new Error(rpcError.message)
     }
 
     if (!rpcResult.success) {
-        throw new Error(rpcResult.error || "Order placement failed")
+      throw new Error(rpcResult.error || "Order placement failed")
     }
 
     const orderId = rpcResult.order_id
 
-    // 4. Trigger Matching Engine
-    // We always trigger the engine for both Limit and Market orders
-    // Market orders will execute immediately against best resting orders
-    const engine = new OrderMatchingEngine(supabase)
-    const matchingResult = await engine.matchOrders(tradingPairId)
+    // 4. Trigger Matching Engine (DECOUPLED - Now handled by place_order_atomic RPC)
+    // We no longer need to trigger it in the API response thread.
 
     return Response.json({
       success: true,
       order_id: orderId,
-      status: matchingResult.executed_trades.length > 0 ? 'PARTIAL_OR_FILLED' : 'OPEN',
-      matching_result: matchingResult,
+      status: 'PENDING'
     })
   } catch (error) {
     captureApiError(error, {

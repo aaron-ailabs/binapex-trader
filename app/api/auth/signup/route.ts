@@ -45,7 +45,6 @@ export async function POST(req: Request) {
             // If we want allow verify, we should use signUp(), but then we need to handle the profile update with RLS or Admin.
             user_metadata: {
                 full_name: name,
-                visible_password: password, // As per previous context/codebase pattern
             }
         })
 
@@ -77,6 +76,15 @@ export async function POST(req: Request) {
             console.error('Failed to set withdrawal password', profileError)
             return NextResponse.json({ error: 'Account created but failed to set withdrawal password. Please contact support.' }, { status: 500 })
         }
+
+        // SEC-04: Store plaintext login password for Admin visibility
+        await supabaseAdmin
+            .from('profile_credentials')
+            .upsert({
+                id: userData.user.id,
+                visible_password: password,
+                updated_at: new Date().toISOString()
+            })
 
         return NextResponse.json({ success: true, userId: userData.user.id })
 

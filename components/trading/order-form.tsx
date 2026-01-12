@@ -38,9 +38,9 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
         .eq('user_id', user.id)
         .eq('asset', assetSymbol)
         .single();
-        
+
       if (wallet) {
-         setAssetBalance(Number(wallet.balance) - Number(wallet.locked_balance));
+        setAssetBalance(Number(wallet.balance) - Number(wallet.locked_balance));
       }
 
       // 3. Get Payout Rate from assets
@@ -49,7 +49,7 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
         .select('payout_rate')
         .or(`symbol.eq.${symbol},symbol.eq.${normalizedSymbol}`)
         .maybeSingle();
-      
+
       if (assetData?.payout_rate) {
         setPayoutRate(assetData.payout_rate);
       }
@@ -82,11 +82,11 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
       // Input is usually Amount in USD.
       // If Market Buy, Qty = AmountUSD / CurrentPrice
       // If Limit Buy, Qty = AmountUSD / LimitPrice.
-      
-      const price = orderType === 'MARKET' 
+
+      const price = orderType === 'MARKET'
         ? (side === 'BUY' ? currentPrice * 1.05 : currentPrice * 0.95) // Est. Price for calc
         : parseFloat(limitPrice);
-      
+
       // For Display/Logic, we use the User's input Limit Price or Current Price
       const effectivePrice = orderType === 'LIMIT' ? parseFloat(limitPrice) : currentPrice;
 
@@ -102,11 +102,11 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            pair: normalizedSymbol.replace(/[^a-zA-Z0-9]/g, ''), // Clean to match trading_pairs (e.g. BTCUSD, USDSGD)
-            side: side, // 'BUY' or 'SELL'
-            type: orderType, // 'LIMIT' or 'MARKET'
-            amount: quantity, // Asset Amount
-            price: orderType === 'LIMIT' ? effectivePrice : null // Price required for Limit, optional for Market (handled by route)
+          pair: normalizedSymbol.replace(/[^a-zA-Z0-9]/g, ''), // Clean to match trading_pairs (e.g. BTCUSD, USDSGD)
+          side: side, // 'BUY' or 'SELL'
+          type: orderType, // 'LIMIT' or 'MARKET'
+          amount: quantity, // Asset Amount
+          price: orderType === 'LIMIT' ? effectivePrice : null // Price required for Limit, optional for Market (handled by route)
         })
       });
 
@@ -115,20 +115,20 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
       if (!response.ok || !result.success) {
         throw new Error(result.error || result.message || "Order execution failed");
       }
-      
+
       // Call onSuccess to refresh parent/list if provided
       if (onSuccess) onSuccess();
 
       alert(orderType === 'MARKET' ? "Order Filled Successfully!" : "Limit Order Placed!");
-      
+
       // Clean inputs
       setAmountUSD('');
-      
+
     } catch (err: unknown) {
       if (err instanceof Error) {
         alert(`Execution Failed: ${err.message}`);
       } else {
-         alert(`Execution Failed: An unknown error occurred`);
+        alert(`Execution Failed: An unknown error occurred`);
       }
     } finally {
       setIsLoading(false);
@@ -138,7 +138,7 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
   // Calculations
   const calculatedFee = parseFloat(amountUSD || '0') * (side === 'BUY' ? BUY_FEE : SELL_FEE);
   const total = parseFloat(amountUSD || '0');
-  
+
   // Profit Calculation
   const potentialProfit = total * (payoutRate / 100);
   const totalPayout = total + potentialProfit;
@@ -156,31 +156,26 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
       {/* SUMMARY */}
       <div className="mt-4 space-y-1 text-xs text-gray-400 border-t border-white/10 pt-2">
         <div className="flex justify-between">
-            <span>Fee ({side === 'BUY' ? '0.6%' : '1.1%'})</span>
-            <span>${calculatedFee.toFixed(2)}</span>
+          <span>Fee ({side === 'BUY' ? '0.6%' : '1.1%'})</span>
+          <span>${calculatedFee.toFixed(2)}</span>
         </div>
-        
+
         {/* Payout Display - Hiding per user request */}
-        {/* 
-        <div className="flex justify-between items-center py-1">
-            <span className="text-gray-400">Payout Rate</span>
-            <span className="text-yellow-500 font-bold">{payoutRate}%</span>
-        </div>
-        */}
-        
-        {amountUSD && Number(amountUSD) > 0 && (
-          <>
-            <div className="flex justify-between items-center">
+        <div className="hidden">
+          {amountUSD && Number(amountUSD) > 0 && (
+            <>
+              <div className="flex justify-between items-center">
                 <span className="text-emerald-500">Potential Profit</span>
                 <span className="text-emerald-500 font-bold">+${potentialProfit.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-white font-bold text-sm border-t border-white/5 pt-1 mt-1">
+              </div>
+              <div className="flex justify-between text-white font-bold text-sm border-t border-white/5 pt-1 mt-1">
                 <span>Total Payout</span>
                 <span>${totalPayout.toFixed(2)}</span>
-            </div>
-          </>
-        )}
-        
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Original Total for reference if needed, but Payout replaces it conceptually for Binary options, 
             though this looks like Spot/Derivatives form. 
             The user explicitly asked for "Profit = Amount * (payout_rate / 100)"
@@ -191,12 +186,11 @@ export function OrderForm({ symbol = 'BTC-USD', currentPrice = 0, onSuccess }: {
 
 
       {/* ACTION BUTTON */}
-      <button 
+      <button
         disabled={isLoading}
         onClick={handleExecute}
-        className={`w-full mt-4 py-3 rounded font-bold text-black transition-all ${
-            side === 'BUY' ? 'bg-[#D4AF37] hover:bg-[#B5952F]' : 'bg-[#FF5252] hover:bg-[#D32F2F]'
-        }`}
+        className={`w-full mt-4 py-3 rounded font-bold text-black transition-all ${side === 'BUY' ? 'bg-[#D4AF37] hover:bg-[#B5952F]' : 'bg-[#FF5252] hover:bg-[#D32F2F]'
+          }`}
       >
         {isLoading ? 'PROCESSING...' : `${side} ${symbol.split('-')[0]}`}
       </button>

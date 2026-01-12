@@ -27,7 +27,7 @@ async function getActiveAssets() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-  
+
   const { data, error } = await supabase
     .from('assets')
     .select('*')
@@ -60,15 +60,15 @@ export async function getBatchPrices(): Promise<MarketData[]> {
     await Promise.all(assets.map(async (asset) => {
       try {
         const ticker = asset.yahoo_ticker;
-        
+
         // 1. If Crypto, try Binance first
         if (asset.category === 'crypto' || asset.type === 'crypto') {
           let binanceSymbol = asset.symbol.replace('-', '').replace('/', '') + 'T';
-          
+
           // Special mapping for certain symbols
           if (asset.symbol.startsWith('UNI')) binanceSymbol = 'UNIUSDT';
           if (asset.symbol.startsWith('MATIC')) binanceSymbol = 'POLUSDT';
-          
+
           const bRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSymbol}`, { next: { revalidate: 30 } });
           if (bRes.ok) {
             const bData = await bRes.json();
@@ -116,26 +116,26 @@ export async function getBatchPrices(): Promise<MarketData[]> {
   return assets.map(asset => {
     const ticker = asset.yahoo_ticker;
     const q = quoteMap[ticker] || {};
-    
+
     // Fallback to previous price if 0? No, just use 0 if API failed for now, but UI will show it.
     const rawPrice = q.regularMarketPrice ?? 0;
     const prevClose = q.regularMarketPreviousClose ?? rawPrice;
-    
+
     // Calculate change
     let changePct = 0;
     if (q.regularMarketChangePercent !== undefined) {
-         changePct = q.regularMarketChangePercent; // simple percent e.g. 0.5
+      changePct = q.regularMarketChangePercent; // simple percent e.g. 0.5
     } else if (prevClose !== 0) {
-         changePct = ((rawPrice - prevClose) / prevClose) * 100;
+      changePct = ((rawPrice - prevClose) / prevClose) * 100;
     }
 
     // Determine type for UI placement
     const isForex = asset.category === 'forex' || asset.type === 'forex';
-    
+
     return {
       symbol: asset.symbol,
       ticker: ticker,
-      price: !isForex ? rawPrice : 0, 
+      price: !isForex ? rawPrice : 0,
       rate: isForex ? rawPrice : 0,
       change_pct: changePct / 100, // Frontend expects 0.01 for 1% usually? Or 1? 
       // Checking binary-options-interface: {hookChange > 0 ? '+' : ''}{(hookChange * 100).toFixed(2)}%
@@ -145,12 +145,52 @@ export async function getBatchPrices(): Promise<MarketData[]> {
       // My code above divides by 100? No. 
       // Let's stick to decimal format (0.01 = 1%).
       // If Yahoo returns 1.25, I should divide by 100.
-      
+
       volume: q.regularMarketVolume ?? 0,
       category: asset.category,
       payout_rate: asset.payout_rate || 85
     };
   });
+}
+
+export async function getLivePrice(symbol: string): Promise<number> {
+  const assets = await getActiveAssets();
+  const asset = assets.find(a => a.symbol === symbol);
+  if (!asset) return 0;
+
+  try {
+    // Simple fetch for one asset
+    if (asset.category === 'crypto' || asset.type === 'crypto') {
+      let binanceSymbol = asset.symbol.replace('-', '').replace('/', '') + 'T';
+      if (asset.symbol.startsWith('UNI')) binanceSymbol = 'UNIUSDT';
+      if (asset.symbol.startsWith('MATIC')) binanceSymbol = 'POLUSDT';
+
+      const bRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`, { cache: 'no-store' });
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        return parseFloat(bData.price);
+      }
+    }
+
+    // Fallback to Yahoo for others
+    const ticker = asset.yahoo_ticker;
+    if (ticker) {
+      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m`;
+      const response = await fetch(yahooUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        cache: 'no-store'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const meta = data?.chart?.result?.[0]?.meta;
+        return meta?.regularMarketPrice || 0;
+      }
+    }
+  } catch (err) {
+    console.error(`getLivePrice failed for ${symbol}:`, err);
+  }
+  return 0;
 }
 
 export async function getAsset(symbol: string) {

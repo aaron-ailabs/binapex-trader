@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getLivePrice } from '@/lib/market-data'
 
 export async function createTrade(
   amount: number,
@@ -16,8 +17,12 @@ export async function createTrade(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
-  // 2. Price Fetch (Mocked)
-  const strikePrice = await fetchLivePrice(symbol)
+  // 2. Price Fetch (Real-time)
+  const strikePrice = await getLivePrice(symbol)
+
+  if (!strikePrice || strikePrice <= 0) {
+    return { error: 'Failed to fetch real-time market price. Please try again.' }
+  }
 
   // 3. Execute Transaction
   const { data, error } = await supabase.rpc('execute_binary_trade', {
@@ -35,10 +40,4 @@ export async function createTrade(
   if (!data?.success) return { error: data?.error || 'Trade Failed' }
 
   return { success: true, order: data.order }
-}
-
-async function fetchLivePrice(symbol: string) {
-  // TODO: Replace with Real API (e.g. Binance/CoinGecko)
-  // Returning random price for demo around 100000
-  return 98000 + Math.random() * 1000
 }

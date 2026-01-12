@@ -39,17 +39,20 @@ export function ExecutionWidget({ asset_symbol, currentPrice, payoutRate, balanc
         setIsSubmitting(true)
 
         try {
-            const { data, error } = await supabase.rpc('execute_binary_trade', {
-                p_user_id: (await supabase.auth.getUser()).data.user?.id,
-                p_asset_symbol: asset_symbol,
-                p_direction: direction === 'HIGH' ? 'UP' : 'DOWN',
-                p_amount: Number(amount),
-                p_duration_seconds: duration,
-                p_strike_price: currentPrice,
-                p_payout_rate: payoutRate
+            const response = await fetch('/api/trading/binary/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    p_asset_symbol: asset_symbol,
+                    p_direction: direction === 'HIGH' ? 'UP' : 'DOWN',
+                    p_amount: Number(amount),
+                    p_duration_seconds: duration
+                })
             })
 
-            if (error) throw error
+            const result = await response.json()
+
+            if (!response.ok) throw new Error(result.error || "Internal Server Error")
 
             setAmount("")
             onSuccess()
@@ -185,8 +188,8 @@ export function ExecutionWidget({ asset_symbol, currentPrice, payoutRate, balanc
                         </button>
                     ))}
                 </div>
-                {/* Trade Summary */}
-                <div className="bg-black/40 rounded-lg p-3 space-y-2 border border-white/5">
+                {/* Trade Summary hidden as per user request */}
+                <div className="hidden">
                     <div className="flex justify-between text-xs text-gray-500">
                         <span>Payout Rate</span>
                         <span className="text-emerald-400 font-bold">{payoutRate}%</span>
