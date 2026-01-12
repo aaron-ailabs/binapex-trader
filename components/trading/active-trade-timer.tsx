@@ -23,6 +23,7 @@ interface Trade {
     direction: 'UP' | 'DOWN'
     end_time: string
     expiry_at: string
+    created_at?: string
 }
 
 export function ActiveTradeTimer({ trade, onComplete }: { trade: Trade, onComplete?: () => void }) {

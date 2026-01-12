@@ -1,5 +1,5 @@
 {
-  "name": "binapex-dec",
+  "name": "binapex-trader",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -52,6 +52,7 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
+    "framer-motion": "^12.25.0",
     "input-otp": "1.4.1",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.454.0",

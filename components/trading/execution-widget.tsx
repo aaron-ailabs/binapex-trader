@@ -227,5 +227,6 @@ export function ExecutionWidget({ asset_symbol, currentPrice, payoutRate, balanc
                     </Button>
                 </div>
             </div>
-            )
+        </div>
+    )
 }

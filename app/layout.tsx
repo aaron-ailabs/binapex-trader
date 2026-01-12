@@ -9,6 +9,9 @@ import { ErrorBoundary } from "@/components/error-boundary"
 import { MaintenanceGuard } from "@/components/maintenance-guard"
 import "./globals.css"
 
+export const dynamic = "force-dynamic"
+
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
