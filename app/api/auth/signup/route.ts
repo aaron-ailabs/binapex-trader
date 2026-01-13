@@ -57,26 +57,24 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
         }
 
-        // Update profiles table with withdrawal password
-        // The trigger `handle_new_user` creates the profile ROW. verify it exists or wait?
-        // It runs AFTER INSERT on auth.users, so it should be there.
-
-        // We update the profile with the hash
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .update({
-                withdrawal_password: withdrawalPasswordHash,
-                withdrawal_password_set: true,
-                withdrawal_password_last_reset: new Date().toISOString()
+        // Insert withdrawal password into user_withdrawal_secrets table
+        // This table stores withdrawal passwords separately for better security
+        const { error: withdrawalSecretError } = await supabaseAdmin
+            .from('user_withdrawal_secrets')
+            .insert({
+                user_id: userData.user.id,
+                password_hash: withdrawalPasswordHash,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             })
-            .eq('id', userData.user.id)
 
-        if (profileError) {
-            // Rollback? Hard to rollback user creation without transaction across auth & public.
-            // Log error.
-            console.error('Failed to set withdrawal password', profileError)
+        if (withdrawalSecretError) {
+            // Log error
+            console.error('Failed to set withdrawal password', withdrawalSecretError)
             return NextResponse.json({ error: 'Account created but failed to set withdrawal password. Please contact support.' }, { status: 500 })
         }
+
+        // Note: profiles.withdrawal_password_set will be auto-updated by trigger
 
         return NextResponse.json({ success: true, userId: userData.user.id })
 
