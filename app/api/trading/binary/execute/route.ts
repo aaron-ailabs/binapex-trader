@@ -33,9 +33,9 @@ export async function POST(req: Request) {
         // 3. Execute Trade via RPC
         const { data, error } = await supabase.rpc('execute_binary_trade', {
             p_user_id: user.id,
+            p_amount: Number(p_amount),
             p_asset_symbol,
             p_direction,
-            p_amount: Number(p_amount),
             p_duration_seconds: Number(p_duration_seconds),
             p_strike_price: strikePrice,
             p_payout_rate: payoutRate

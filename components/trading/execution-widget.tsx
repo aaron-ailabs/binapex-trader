@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react"
+import { toast } from "sonner"
 
 interface ExecutionWidgetProps {
     asset_symbol: string
@@ -56,6 +57,9 @@ export function ExecutionWidget({ asset_symbol, currentPrice, payoutRate, balanc
 
             setAmount("")
             onSuccess()
+            toast.success("Trade Submitted", {
+                description: `${direction === 'HIGH' ? 'Higher' : 'Lower'} position opened for ${asset_symbol}`
+            })
         } catch (e: any) {
             console.error(e)
             alert(e.message)

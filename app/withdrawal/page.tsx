@@ -27,12 +27,13 @@ export default async function WithdrawalPage() {
     .eq("user_id", user.id)
     .single()
 
-  // Fetch pending withdrawals from new table
+  // Fetch pending withdrawals from transactions table
   const { data: pendingWithdrawals } = await supabase
-    .from("withdrawals")
+    .from("transactions")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "PENDING")
+    .eq("type", "withdraw")
+    .eq("status", "pending")
     .order("created_at", { ascending: false })
 
   const { data: wallet } = await supabase
@@ -42,18 +43,18 @@ export default async function WithdrawalPage() {
     .eq("asset", "USD")
     .single()
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("bonus_balance")
+    .eq("id", user.id)
+    .single()
+
   const { data: userBanks } = await supabase
     .from("user_banks")
     .select("*")
     .eq("user_id", user.id)
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("balance_usd, bonus_balance")
-    .eq("id", user.id)
-    .single()
-
-  const totalBalance = Number(wallet?.balance ?? profile?.balance_usd ?? 0)
+  const totalBalance = Number(wallet?.balance ?? 0)
   const lockedBalance = Number(wallet?.locked_balance ?? 0)
   const bonusBalance = Number(profile?.bonus_balance ?? 0)
   const availableBalance = Math.max(0, totalBalance + bonusBalance - lockedBalance)

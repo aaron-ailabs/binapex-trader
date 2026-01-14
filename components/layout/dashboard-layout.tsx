@@ -49,23 +49,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Fetch profile with specific wallet selection
+      // Fetch profile and wallets
       const { data: profile } = await supabase
         .from("profiles")
-        .select("bonus_balance, balance_usd, wallets(balance, asset)")
+        .select("bonus_balance, wallets(balance, asset)")
         .eq("id", user.id)
         .single()
 
       if (profile) {
-        // Find USD wallet specifically, handling array or single response structure
-        // The join returns an array
+        // Sum USD and USDT wallets specifically
         const wallets = profile.wallets as { asset: string; balance: number }[] | null
-        const usdWallet = wallets?.find((w) => w.asset === "USD")
+        const walletBal = wallets?.reduce((acc, curr) => {
+          if (curr.asset === "USD" || curr.asset === "USDT") {
+            return acc + Number(curr.balance)
+          }
+          return acc
+        }, 0) || 0
 
-        const walletBal = usdWallet?.balance ?? profile.balance_usd ?? 0
-        const bonusBal = profile.bonus_balance ?? 0
+        const bonusBal = Number(profile.bonus_balance ?? 0)
 
-        // Total Balance = USD Wallet + Bonus
+        // Total Balance = Combined Wallets + Bonus
         setBalance(walletBal + bonusBal)
       }
     }

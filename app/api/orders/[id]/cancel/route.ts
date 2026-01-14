@@ -39,7 +39,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     }
 
     // Cancel order
-    const engine = new OrderMatchingEngine(supabase)
+    const engine = new OrderMatchingEngine(supabase as any)
     const success = await engine.cancelOrder(orderId, user.id)
 
     if (!success) {

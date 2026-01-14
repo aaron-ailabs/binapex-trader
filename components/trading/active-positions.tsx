@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Loader2, Trophy, XCircle, Clock } from "lucide-react"
 import { CircularTimer } from "@/components/ui/circular-timer"
 import { useSound } from "@/lib/hooks/use-sound"
+import { toast } from "sonner"
 
 interface Trade {
     id: string
@@ -193,7 +194,12 @@ export function ActivePositions() {
                                                     duration={totalDuration}
                                                     expiryTime={new Date(trade.end_time)}
                                                     size={32}
-                                                    onWarning={() => play('warning')}
+                                                    onWarning={() => {
+                                                        play('warning')
+                                                        toast.warning("Trade Expiring", {
+                                                            description: `${trade.asset_symbol} expires in 10 seconds!`
+                                                        })
+                                                    }}
                                                 />
                                             )}
                                         </div>

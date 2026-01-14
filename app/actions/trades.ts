@@ -53,3 +53,26 @@ export async function getTradeHistory(): Promise<{ data: Trade[] | null; error: 
 
   return { data, error: null };
 }
+
+export async function getOpenLimitOrders(): Promise<{ data: any[] | null; error: string | null }> {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { data: null, error: 'Unauthorized' };
+  }
+
+  const { data, error } = await supabase
+    .from('limit_orders')
+    .select('*, trading_pairs(symbol)')
+    .eq('user_id', user.id)
+    .eq('status', 'OPEN')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching limit orders:', error);
+    return { data: null, error: 'Failed to fetch limit orders' };
+  }
+
+  return { data, error: null };
+}

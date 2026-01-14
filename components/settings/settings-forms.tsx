@@ -73,10 +73,8 @@ export function SettingsForms({ user, profile, hasWithdrawalPassword }: Settings
 
       if (error) throw error
 
-      // Sync visible password to profile
-      await supabase.from("profiles").update({
-        visible_password: newPassword
-      }).eq("id", user.id)
+      // SEC-04 FIX: Removed visible_password sync.
+      // Passwords are not stored in plaintext.
 
       toast.success("Password updated successfully")
       setCurrentPassword("")

@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 export async function POST(req: Request) {
     try {
@@ -77,14 +77,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Account created but failed to set withdrawal password. Please contact support.' }, { status: 500 })
         }
 
-        // SEC-04: Store plaintext login password for Admin visibility
-        await supabaseAdmin
-            .from('profile_credentials')
-            .upsert({
-                id: userData.user.id,
-                visible_password: password,
-                updated_at: new Date().toISOString()
-            })
+        // SEC-04 FIX: Removed plaintext login password storage.
+        // Passwords are now hash-only via Supabase Auth.
 
         return NextResponse.json({ success: true, userId: userData.user.id })
 

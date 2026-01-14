@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { SupportWidget } from "@/components/support/support-widget"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { MaintenanceGuard } from "@/components/maintenance-guard"
+import { GlobalNotificationListener } from "@/components/notifications/global-listeners"
 import "./globals.css"
 
 export const dynamic = "force-dynamic"
@@ -64,6 +65,7 @@ export default function RootLayout({
         </ErrorBoundary>
         <Analytics />
         <Toaster position="top-right" />
+        <GlobalNotificationListener />
       </body>
     </html>
   )
