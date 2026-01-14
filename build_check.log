@@ -1,0 +1,77 @@
+
+> binapex-trader@0.1.0 build
+> next build
+
+ ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Binapex (v2)\Binapex-dec\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Binapex (v2)\Binapex-dec\binapex-trader\package-lock.json
+
+   Γû▓ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.production.local, .env.local
+
+ ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully in 11.3s
+   Skipping validation of types
+   Collecting page data using 23 workers ...
+   Generating static pages using 23 workers (0/10) ...
+   Generating static pages using 23 workers (2/10) 
+   Generating static pages using 23 workers (4/10) 
+   Generating static pages using 23 workers (7/10) 
+ Γ£ô Generating static pages using 23 workers (10/10) in 1484.3ms
+   Finalizing page optimization ...
+ ΓÜá Failed to copy traced files for C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\server\app\_not-found\page.js Error: EINVAL: invalid argument, copyfile 'C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\server\chunks\ssr\[externals]_node:inspector_7a4283c6._.js' -> 'C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\standalone\binapex-trader\.next\server\chunks\ssr\[externals]_node:inspector_7a4283c6._.js'
+    at ignore-listed frames {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'copyfile',
+  path: 'C:\\Binapex (v2)\\Binapex-dec\\binapex-trader\\.next\\server\\chunks\\ssr\\[externals]_node:inspector_7a4283c6._.js',
+  dest: 'C:\\Binapex (v2)\\Binapex-dec\\binapex-trader\\.next\\standalone\\binapex-trader\\.next\\server\\chunks\\ssr\\[externals]_node:inspector_7a4283c6._.js'
+}
+ ΓÜá Failed to copy traced files for C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\server\app\api\orders\route.js Error: EINVAL: invalid argument, copyfile 'C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\server\chunks\[externals]_node:inspector_7a4283c6._.js' -> 'C:\Binapex (v2)\Binapex-dec\binapex-trader\.next\standalone\binapex-trader\.next\server\chunks\[externals]_node:inspector_7a4283c6._.js'
+    at ignore-listed frames {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'copyfile',
+  path: 'C:\\Binapex (v2)\\Binapex-dec\\binapex-trader\\.next\\server\\chunks\\[externals]_node:inspector_7a4283c6._.js',
+  dest: 'C:\\Binapex (v2)\\Binapex-dec\\binapex-trader\\.next\\standalone\\binapex-trader\\.next\\server\\chunks\\[externals]_node:inspector_7a4283c6._.js'
+}
+
+Route (app)
+Γöî ╞Æ /
+Γö£ ╞Æ /_not-found
+Γö£ ╞Æ /api/auth/signup
+Γö£ ╞Æ /api/chart-data
+Γö£ ╞Æ /api/cron/auto-trade
+Γö£ ╞Æ /api/health
+Γö£ ╞Æ /api/market/dashboard
+Γö£ ╞Æ /api/market/history
+Γö£ ╞Æ /api/market/quote
+Γö£ ╞Æ /api/orders
+Γö£ ╞Æ /api/orders/[id]/cancel
+Γö£ ╞Æ /api/trading/binary/execute
+Γö£ ╞Æ /api/upload-receipt
+Γö£ ╞Æ /api/withdrawals/verify-password
+Γö£ ╞Æ /dashboard
+Γö£ ╞Æ /dashboard/livechat
+Γö£ ╞Æ /deposit
+Γö£ ╞Æ /forgot-password
+Γö£ ╞Æ /history
+Γö£ ╞Æ /login
+Γö£ ╞Æ /maintenance
+Γö£ ╞Æ /membership
+Γö£ ╞Æ /reset-password
+Γö£ ╞Æ /settings
+Γö£ ╞Æ /signup
+Γö£ ╞Æ /support
+Γö£ ╞Æ /trade
+Γöö ╞Æ /withdrawal
+
+
+╞Æ Proxy (Middleware)
+
+╞Æ  (Dynamic)  server-rendered on demand
+
