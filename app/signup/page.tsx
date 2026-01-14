@@ -15,6 +15,30 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter"
+
+// Basic strength meter logic
+function calculatePasswordStrength(password: string) {
+  let score = 0;
+  let feedback = "";
+
+  if (!password) return { score: 0, feedback: "" };
+
+  if (password.length > 6) score++;
+  if (password.length > 10) score++;
+  if (/[A-Z]/.test(password) && /[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  switch (score) {
+    case 0: feedback = "Too weak"; break;
+    case 1: feedback = "Weak"; break;
+    case 2: feedback = "Medium"; break;
+    case 3: feedback = "Strong"; break;
+    case 4: feedback = "Very Strong"; break;
+  }
+
+  return { score, feedback };
+}
 
 export default function SignupPage() {
   const router = useRouter()
@@ -158,6 +182,7 @@ export default function SignupPage() {
             className="bg-black/20 border-white/10 focus:border-binapex-gold"
           />
           {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+          <PasswordStrengthMeter {...calculatePasswordStrength(watch("password") || "")} />
         </div>
 
         {/* Confirm Password */}

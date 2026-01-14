@@ -34,10 +34,9 @@ export async function updateUserLocation() {
             headersList.get("x-real-ip") ||
             "";
 
-        // For local development, ignore localhost
+        // For local development, ignore local loopback
         if (process.env.NODE_ENV === "development" && (ip === "::1" || ip === "127.0.0.1" || !ip)) {
             // Optional: Use a dummy IP for testing logic if needed, or just return
-            console.log("Dev environment: Skipping Geo update for localhost")
             return
         }
 
