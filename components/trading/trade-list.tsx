@@ -77,7 +77,7 @@ export function TradeList() {
 
                             // Show Toast
                             if (newOrder.status === 'WIN') {
-                                const winAmount = newOrder.profit_loss ?? (newOrder.amount * (newOrder.payout_rate ?? 85) / 100)
+                                const winAmount = newOrder.pnl ?? (newOrder.amount * 0.85)
                                 toast.success(`Trade Won! +$${winAmount.toFixed(2)}`, {
                                     description: `${newOrder.asset_symbol} ${newOrder.direction}`
                                 })
@@ -152,12 +152,12 @@ export function TradeList() {
                                         <div className="flex items-center gap-3 text-xs text-gray-400">
                                             <span>${trade.amount}</span>
                                             <span className="text-gray-600">@</span>
-                                            <span>{trade.strike_price}</span>
+                                            <span>{trade.entry_price}</span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <div className="font-mono font-bold text-[#F59E0B] text-lg leading-none">
-                                            {formatCountdown(trade.end_time)}
+                                            {formatCountdown(trade.created_at && trade.duration ? new Date(new Date(trade.created_at).getTime() + trade.duration * 1000).toISOString() : null)}
                                         </div>
                                         <span className="text-[10px] text-gray-500 uppercase">Rem. Time</span>
                                     </div>
@@ -236,7 +236,7 @@ export function TradeList() {
                                         {trade.status === 'WIN' ? (
                                             <div className="flex items-center gap-1.5 text-green-400 font-bold">
                                                 <span className="text-sm">
-                                                    +${(trade.profit_loss || (trade.amount * (trade.payout_rate || 85) / 100)).toFixed(2)}
+                                                    +${(trade.pnl || (trade.amount * 0.85)).toFixed(2)}
                                                 </span>
                                                 <Trophy className="w-3 h-3" />
                                             </div>
