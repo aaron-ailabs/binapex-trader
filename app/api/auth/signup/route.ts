@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -16,17 +16,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Withdrawal password must be at least 8 characters' }, { status: 400 })
         }
 
-        // Initialize Supabase Admin client (Service Role) to properly set user attributes and DB fields
-        const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            }
-        )
+        // Use the service client for admin operations
+        const supabaseAdmin = createServiceClient()
 
         // Hash the withdrawal password
         const withdrawalPasswordHash = await bcrypt.hash(withdrawalPassword, 10)
@@ -84,6 +75,12 @@ export async function POST(req: Request) {
 
     } catch (err: any) {
         console.error('Signup error:', err)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+        // In development, return more detailed error
+        const errorMessage = process.env.NODE_ENV === 'development'
+            ? `Internal server error: ${err?.message || 'Unknown error'}`
+            : 'Internal server error'
+
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
