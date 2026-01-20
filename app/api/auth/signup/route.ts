@@ -1,45 +1,41 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 export async function POST(req: Request) {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        cookieStore.set(name, value, options)
-                    })
-                },
-            },
-        }
-    )
-
     try {
         const { email, password, name, withdrawalPassword } = await req.json()
 
         if (!email || !password || !withdrawalPassword) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
-        
+
         // Basic strength check for withdrawal password
         if (withdrawalPassword.length < 8) {
             return NextResponse.json({ error: 'Withdrawal password must be at least 8 characters' }, { status: 400 })
         }
 
-        const { data: userData, error: signUpError } = await supabase.auth.signUp({
+        // Use the service client for admin operations
+        const supabaseAdmin = createServiceClient()
+
+        // Hash the withdrawal password
+        const withdrawalPasswordHash = await bcrypt.hash(withdrawalPassword, 10)
+
+        // Create user
+        // Note: We are using admin.createUser to set email_confirm = true if we want (or standard flow).
+        // Standard flow usually expects email verification.
+        // However, since we need to set the withdrawal_password in the profiles table immediately,
+        // and the Trigger creates the profile, we have a race condition or we need to update it after.
+        // The clean way: Create user, then update profile.
+
+        const { data: userData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
-            options: {
-                data: {
-                    full_name: name,
-                }
+            email_confirm: true, // Auto-confirm for now as per "API route" usually implies simpler flow or handled by frontend.
+            // If we want allow verify, we should use signUp(), but then we need to handle the profile update with RLS or Admin.
+            user_metadata: {
+                full_name: name,
             }
         })
 
@@ -51,19 +47,55 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
         }
 
-        // FIXME: The original implementation used a privileged RPC 'admin_set_withdrawal_password'.
-        // This is no longer possible without the service role key. A new, secure RPC needs to be created
-        // that allows a user to set their own withdrawal password upon signup.
-        // For now, this functionality is disabled.
-        if (withdrawalPassword) {
-            console.warn(`Withdrawal password was provided for user ${userData.user.id} but could not be set due to security refactoring.`);
+        // Update profiles table with withdrawal password
+        // The trigger `handle_new_user` creates the profile ROW.
+        // Wait for profile to be created (retry logic to handle race condition)
+        let profileUpdated = false
+        let retries = 0
+        const maxRetries = 5
+
+        while (!profileUpdated && retries < maxRetries) {
+            // Small delay to allow trigger to complete (except first attempt)
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100 * retries))
+            }
+
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .update({
+                    withdrawal_password: withdrawalPasswordHash,
+                    withdrawal_password_set: true,
+                    withdrawal_password_last_reset: new Date().toISOString()
+                })
+                .eq('id', userData.user.id)
+
+            if (!profileError) {
+                profileUpdated = true
+            } else if (retries === maxRetries - 1) {
+                // Last retry failed
+                console.error('Failed to set withdrawal password after retries', profileError)
+                return NextResponse.json({
+                    error: 'Account created but failed to set withdrawal password. Please contact support.',
+                    details: process.env.NODE_ENV === 'development' ? profileError.message : undefined
+                }, { status: 500 })
+            }
+
+            retries++
         }
 
+        // SEC-04 FIX: Removed plaintext login password storage.
+        // Passwords are now hash-only via Supabase Auth.
 
         return NextResponse.json({ success: true, userId: userData.user.id })
 
     } catch (err: any) {
-        console.error('Signup error details:', err.message, err.stack)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        console.error('Signup error:', err)
+
+        // In development, return more detailed error
+        const errorMessage = process.env.NODE_ENV === 'development'
+            ? `Internal server error: ${err?.message || 'Unknown error'}`
+            : 'Internal server error'
+
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }

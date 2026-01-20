@@ -83,25 +83,7 @@ export function DashboardClient({
         }
     }, [supabase, initialProfile?.id])
 
-    // Recalculate Portfolio Values on Asset Update
-    let totalPortfolioValue = 0
-    let totalInvestedValue = 0
-
-    portfolio?.forEach((item) => {
-        const asset = assets?.find((a) => a.symbol === item.symbol)
-        if (asset) {
-            const currentVal = item.amount * asset.current_price
-            const investedVal = item.amount * item.average_buy_price
-            totalPortfolioValue += currentVal
-            totalInvestedValue += investedVal
-        }
-    })
-
-    // Adjusted P/L logic
-    const totalPnL = totalPortfolioValue - totalInvestedValue
-    const pnlPercent =
-        totalInvestedValue > 0 ? ((totalPnL / totalInvestedValue) * 100).toFixed(2) : "0.00"
-
+    // Display balance from backend only (no calculations)
     const displayBalance = balance
 
     return (
@@ -125,7 +107,7 @@ export function DashboardClient({
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <StatCard
                     label="USD Balance"
                     value={`$${displayBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -136,19 +118,9 @@ export function DashboardClient({
                     }}
                 />
                 <StatCard
-                    label="Portfolio Value"
-                    value={`$${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    label="Portfolio Items"
+                    value={`${portfolio?.length || 0}`}
                     icon={Activity}
-                />
-                <StatCard
-                    label="Total P/L"
-                    value={`${totalPnL >= 0 ? "+" : ""}$${Math.abs(totalPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                    icon={TrendingUp}
-                    trend={{
-                        value: `${pnlPercent}%`,
-                        isPositive: totalPnL >= 0,
-                    }}
-                    className={totalPnL >= 0 ? "border-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.05)]" : "border-red-500/10 shadow-[0_0_30px_rgba(239,68,68,0.05)]"}
                 />
                 <StatCard
                     label="Bonus Balance"

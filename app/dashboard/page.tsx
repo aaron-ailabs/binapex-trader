@@ -16,7 +16,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-  // Fetch USD Wallet Balance (Source of Truth)
+  // Fetch USD Wallet Balance (Single Source of Truth)
   const { data: usdWallet } = await supabase
     .from("wallets")
     .select("balance")
@@ -24,35 +24,16 @@ export default async function DashboardPage() {
     .eq("asset", "USD")
     .single()
 
-  const { data: assets } = await supabase.from("assets").select("*").eq("is_active", true).limit(8)
+  // STRICT: Use ONLY wallet balance from backend
+  const displayBalance = usdWallet?.balance ?? 0
 
-  // Use Wallet Balance if available, fallback to profile (legacy)
-  const displayBalance = usdWallet?.balance ?? profile?.balance_usd ?? 0
+  const { data: assets } = await supabase.from("assets").select("*").eq("is_active", true).limit(8)
 
   const { data: portfolio } = await supabase
     .from("portfolio")
     .select("*")
     .eq("user_id", user.id)
     .gt("amount", 0)
-
-  // Calculate 24h P/L based on Portfolio
-  let totalPortfolioValue = 0
-  let totalInvestedValue = 0
-
-  portfolio?.forEach(item => {
-    const asset = assets?.find(a => a.symbol === item.symbol)
-    if (asset) {
-      const currentVal = item.amount * asset.current_price
-      const investedVal = item.amount * item.average_buy_price
-      totalPortfolioValue += currentVal
-      totalInvestedValue += investedVal
-    }
-  })
-
-  // Adjusted P/L logic
-  const totalPnL = totalPortfolioValue - totalInvestedValue
-
-  const pnlPercent = totalInvestedValue > 0 ? ((totalPnL / totalInvestedValue) * 100).toFixed(2) : "0.00"
 
   return (
     <DashboardLayout>

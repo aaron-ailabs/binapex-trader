@@ -20,21 +20,29 @@ export function rateLimit(identifier: string, limit = 10, windowMs = 60000) {
   const now = Date.now()
   const record = rateLimitMap.get(identifier)
 
-  if (!record || now > record.resetAt) {
+  // Check if no record exists
+  if (!record) {
     rateLimitMap.set(identifier, { count: 1, resetAt: now + windowMs })
     return { limited: false, remaining: limit - 1 }
   }
 
-  if (record.count >= limit) {
+  // Check if window expired
+  if (now > record!.resetAt) {
+    rateLimitMap.set(identifier, { count: 1, resetAt: now + windowMs })
+    return { limited: false, remaining: limit - 1 }
+  }
+
+  // TypeScript now knows record is defined
+  if (record!.count >= limit) {
     return {
       limited: true,
       remaining: 0,
-      resetAt: record.resetAt,
+      resetAt: record!.resetAt,
     }
   }
 
-  record.count++
-  return { limited: false, remaining: limit - record.count }
+  record!.count++
+  return { limited: false, remaining: limit - record!.count }
 }
 
 export function rateLimitMiddleware(request: NextRequest, limit = 10, windowMs = 60000) {
