@@ -24,7 +24,6 @@ export async function updateSession(request: NextRequest) {
     const pathname = request.nextUrl.pathname
 
     // Skip auth check for public assets and static files
-    // This addresses Issue 1: "Repeated supabase.auth.getUser() calls"
     if (isStaticAsset(pathname)) {
       return response
     }
@@ -32,9 +31,10 @@ export async function updateSession(request: NextRequest) {
     console.log("[Middleware] Processing request:", pathname)
 
     // Determine if we need to authenticate the user
-    // We only need auth if it's a protected route (or an auth route to redirect away)
-    const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/api")
-    const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/admin/login"
+    // Protected paths from both middleware.ts and lib/supabase/proxy.ts
+    const protectedPaths = ["/dashboard", "/deposit", "/withdrawal", "/trade", "/settings", "/admin", "/api"]
+    const isProtected = protectedPaths.some((path) => pathname.startsWith(path))
+    const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/admin/login"
 
     let user = null
 
@@ -48,12 +48,16 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // Apply Routing Logic - Addresses Issue 3 "God Function" by separating concerns
+    // Apply Routing Logic
 
-    // 1. Dashboard Protection
-    if (pathname.startsWith("/dashboard")) {
+    // 1. Protected Route Protection
+    if (isProtected) {
       if (!user) {
-        return redirectTo(request, "/login")
+        // Special handling for API routes
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+        return redirectTo(request, "/login", pathname)
       }
     }
 
@@ -62,17 +66,15 @@ export async function updateSession(request: NextRequest) {
       return redirectTo(request, "/dashboard")
     }
 
-    // 3. Admin Route Protection
+    // 3. Admin Route Protection (if they somehow bypass the proxy.ts redirect)
     if ((pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) && pathname !== "/admin/login" && pathname !== "/admin/setup") {
       if (!user) {
-        console.log("[Middleware] Admin route accessed without authentication, redirecting to login")
         if (pathname.startsWith("/api/")) {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         return redirectTo(request, "/admin/login")
       }
 
-      // SEC-03: Implement Edge RBAC check using cache to avoid excessive DB calls
       const cacheKey = user.id
       const cachedStatus = adminStatusCache.get(cacheKey)
       const now = Date.now()
@@ -143,8 +145,11 @@ function isStaticAsset(pathname: string) {
   return staticExtensions.some(ext => pathname.toLowerCase().endsWith(ext))
 }
 
-function redirectTo(request: NextRequest, path: string) {
+function redirectTo(request: NextRequest, path: string, next?: string) {
   const url = request.nextUrl.clone()
   url.pathname = path
+  if (next) {
+    url.searchParams.set("next", next)
+  }
   return NextResponse.redirect(url)
 }
