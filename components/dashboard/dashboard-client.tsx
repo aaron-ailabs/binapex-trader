@@ -8,9 +8,12 @@ import { GlassCard } from "@/components/ui/glass-card"
 import { DollarSign, TrendingUp, Activity, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 import type { Asset, Profile } from "@/lib/types/database"
 import { CreditScoreCard } from "@/components/dashboard/credit-score-card"
 import { GeoUpdater } from "@/components/dashboard/geo-updater"
+import { PortfolioChart } from "@/components/dashboard/portfolio-chart"
+import { AllocationChart } from "@/components/dashboard/allocation-chart"
 import { toast } from "sonner"
 
 interface DashboardClientProps {
@@ -87,21 +90,30 @@ export function DashboardClient({
         <div className="space-y-6">
             <GeoUpdater />
             {/* Header */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-balance">
-                    Welcome back, {initialProfile?.full_name || userEmail.split("@")[0] || "Trader"}
-                </h1>
-                <p className="text-gray-400">Your professional trading dashboard</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
+                <div className="space-y-1">
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white flex items-center gap-3">
+                        Welcome back, <span className="text-gradient-gold">{initialProfile?.full_name || userEmail.split("@")[0] || "Trader"}</span>
+                    </h1>
+                    <p className="text-gray-400 font-medium">Your professional trading dashboard is ready.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Link href="/trade">
+                        <Button className="bg-[#EBD062] hover:bg-[#d4af37] text-black font-bold h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(235,208,98,0.2)] transition-all hover:scale-105 active:scale-95">
+                            Trade Now
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <StatCard
                     label="USD Balance"
-                    value={`$${displayBalance.toFixed(2)}`}
+                    value={`$${displayBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     icon={DollarSign}
                     trend={{
-                        value: "Available",
+                        value: "Verified",
                         isPositive: true,
                     }}
                 />
@@ -109,158 +121,181 @@ export function DashboardClient({
                     label="Portfolio Items"
                     value={`${portfolio?.length || 0}`}
                     icon={Activity}
-                    className="border-[#F59E0B]/20"
                 />
                 <StatCard
                     label="Bonus Balance"
-                    value={`$${(initialProfile?.bonus_balance || 0).toFixed(2)}`}
+                    value={`$${(initialProfile?.bonus_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     icon={Crown}
                 />
             </div>
 
+            {/* Analytics Section - Phase 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                    <PortfolioChart />
+                </div>
+                <div className="lg:col-span-1">
+                    <AllocationChart />
+                </div>
+            </div>
+
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-8">
                     {/* Market Overview */}
-                    <GlassCard className="p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold">Market Overview</h3>
+                    <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/40 backdrop-blur-xl">
+                        <div className="p-6 flex justify-between items-center border-b border-white/5 bg-white/[0.02]">
+                            <div>
+                                <h3 className="text-xl font-bold text-white">Market Overview</h3>
+                                <p className="text-xs text-gray-400 mt-1">Real-time asset prices and 24h performance</p>
+                            </div>
                             <Link href="/trade">
                                 <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    className="border-[#F59E0B]/20 text-[#F59E0B] hover:bg-[#F59E0B]/10 bg-transparent"
+                                    className="text-primary hover:text-primary/80 hover:bg-primary/5 font-bold"
                                 >
-                                    View All Markets
+                                    View All
                                 </Button>
                             </Link>
                         </div>
-                        <DataTable
-                            data={assets || []}
-                            columns={[
-                                {
-                                    header: "Asset",
-                                    accessor: (row: Asset) => (
-                                        <div>
-                                            <div className="font-medium text-white">{row.symbol}</div>
-                                            <div className="text-xs text-gray-400">{row.name}</div>
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    header: "Type",
-                                    accessor: (row: Asset) => (
-                                        <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-300 capitalize">
-                                            {row.type}
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    header: "Price",
-                                    accessor: (row: Asset) => (
-                                        <span className={`font-mono transition-colors duration-300 ${row.change_24h >= 0 ? "text-white" : "text-white"}`}>
-                                            ${row.current_price.toFixed(2)}
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    header: "24h Change",
-                                    accessor: (row: Asset) => (
-                                        <span
-                                            className={`font-mono ${row.change_24h >= 0 ? "text-emerald-500" : "text-red-500"}`}
-                                        >
-                                            {row.change_24h >= 0 ? "+" : ""}
-                                            {row.change_24h.toFixed(2)}%
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    header: "Action",
-                                    accessor: (row: Asset) => (
-                                        <Link href={`/trade?asset=${row.symbol}`}>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-[#F59E0B] hover:text-[#FBBF24] h-8"
+                        <div className="p-4">
+                            <DataTable
+                                data={assets || []}
+                                columns={[
+                                    {
+                                        header: "Asset",
+                                        accessor: (row: Asset) => (
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center font-bold text-[10px] text-primary border border-white/5">
+                                                    {row.symbol.substring(0, 2)}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-white tracking-wide">{row.symbol}</div>
+                                                    <div className="text-[10px] uppercase tracking-tighter text-gray-500">{row.name}</div>
+                                                </div>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: "Type",
+                                        accessor: (row: Asset) => (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 text-gray-400 uppercase tracking-widest border border-white/5">
+                                                {row.type}
+                                            </span>
+                                        ),
+                                    },
+                                    {
+                                        header: "Price",
+                                        accessor: (row: Asset) => (
+                                            <span className="font-mono text-sm font-bold text-white">
+                                                ${row.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        ),
+                                    },
+                                    {
+                                        header: "24h",
+                                        accessor: (row: Asset) => (
+                                            <span
+                                                className={cn(
+                                                    "font-mono text-xs font-bold px-2 py-1 rounded-lg",
+                                                    row.change_24h >= 0 ? "text-emerald-400 bg-emerald-400/5 border border-emerald-400/10" : "text-red-400 bg-red-400/5 border border-red-400/10"
+                                                )}
                                             >
-                                                Trade
-                                            </Button>
-                                        </Link>
-                                    ),
-                                },
-                            ]}
-                        />
+                                                {row.change_24h >= 0 ? "▲" : "▼"}{Math.abs(row.change_24h).toFixed(2)}%
+                                            </span>
+                                        ),
+                                    },
+                                    {
+                                        header: "Action",
+                                        accessor: (row: Asset) => (
+                                            <Link href={`/trade?asset=${row.symbol}`}>
+                                                <Button
+                                                    variant="ghost"
+                                                    className="text-primary hover:text-primary hover:bg-primary/10 h-9 font-bold rounded-lg transition-all"
+                                                >
+                                                    Trade
+                                                </Button>
+                                            </Link>
+                                        ),
+                                    },
+                                ]}
+                            />
+                        </div>
                     </GlassCard>
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {/* Credit Score Card */}
-                    <CreditScoreCard
-                        creditScore={initialProfile?.credit_score || null}
-                        creditScoreUpdatedAt={initialProfile?.credit_score_updated_at || null}
-                    />
+                    <div className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-transparent rounded-[2rem] blur opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+                        <CreditScoreCard
+                            creditScore={initialProfile?.credit_score || null}
+                            creditScoreUpdatedAt={initialProfile?.credit_score_updated_at || null}
+                        />
+                    </div>
 
                     {/* Quick Actions */}
-                    <GlassCard className="p-6 space-y-6">
+                    <GlassCard className="p-6 space-y-8 border-white/5 bg-white/[0.01] backdrop-blur-3xl">
                         <div>
-                            <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
-                            <div className="space-y-3">
-                                <Link href="/trade" className="block">
-                                    <Button className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-black font-bold">
-                                        Start Trading
-                                    </Button>
-                                </Link>
-                                <Link href="/deposit" className="block">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-white">Quick Actions</h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Link href="/deposit" className="col-span-1">
                                     <Button
                                         variant="outline"
-                                        className="w-full border-white/10 bg-transparent hover:bg-white/5"
+                                        className="w-full h-14 border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-primary/20 text-gray-300 rounded-xl transition-all flex flex-col items-center justify-center gap-1 group"
                                     >
-                                        Deposit Funds
+                                        <DollarSign size={16} className="text-primary group-hover:scale-110 transition-transform" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Deposit</span>
                                     </Button>
                                 </Link>
-                                <Link href="/withdrawal" className="block">
+                                <Link href="/withdrawal" className="col-span-1">
                                     <Button
                                         variant="outline"
-                                        className="w-full border-white/10 bg-transparent hover:bg-white/5"
+                                        className="w-full h-14 border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-red-500/20 text-gray-300 rounded-xl transition-all flex flex-col items-center justify-center gap-1 group"
                                     >
-                                        Withdraw Funds
+                                        <Activity size={16} className="text-red-400 group-hover:scale-110 transition-transform" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Withdraw</span>
                                     </Button>
                                 </Link>
-                                <Link href="/history" className="block">
+                                <Link href="/history" className="col-span-2">
                                     <Button
                                         variant="outline"
-                                        className="w-full border-white/10 bg-transparent hover:bg-white/5"
+                                        className="w-full h-12 border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-white/10 text-gray-400 rounded-xl transition-all font-bold tracking-wide"
                                     >
-                                        View History
+                                        Trade History
                                     </Button>
                                 </Link>
                             </div>
                         </div>
 
                         {/* Membership Status */}
-                        <div className="pt-6 border-t border-white/10">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-gray-400">Membership Tier</span>
+                        <div className="pt-8 border-t border-white/5 relative">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 blur-2xl rounded-full -translate-y-8" />
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Account Status</span>
                                 <Link href="/membership">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-xs text-[#F59E0B] hover:text-[#FBBF24] h-auto p-0"
-                                    >
-                                        View Details
-                                    </Button>
+                                    <span className="text-[10px] font-bold text-primary hover:underline cursor-pointer">Upgrade</span>
                                 </Link>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Crown className="h-5 w-5 text-[#C0C0C0]" />
-                                <span className="font-bold text-lg capitalize">
-                                    {initialProfile?.membership_tier || "Silver"}
-                                </span>
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/5">
+                                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_15px_rgba(235,208,98,0.1)]">
+                                    <Crown className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter mb-0.5">Current Tier</div>
+                                    <div className="font-bold text-xl text-white capitalize tracking-wide">
+                                        {initialProfile?.membership_tier || "Silver"} Member
+                                    </div>
+                                </div>
                             </div>
-                            <div className="mt-3 text-xs text-gray-400">
-                                Total Volume: ${(initialProfile?.total_trade_volume || 0).toFixed(2)}
+                            <div className="mt-4 flex items-center justify-between px-1">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase">Trade Volume</span>
+                                <span className="text-xs font-mono font-bold text-white">${(initialProfile?.total_trade_volume || 0).toLocaleString()}</span>
                             </div>
                         </div>
                     </GlassCard>
@@ -269,77 +304,85 @@ export function DashboardClient({
 
             {/* Portfolio Holdings */}
             {portfolio && portfolio.length > 0 && (
-                <GlassCard className="p-6">
-                    <h3 className="text-xl font-bold mb-4">Portfolio Holdings</h3>
-                    <DataTable
-                        data={portfolio}
-                        columns={[
-                            {
-                                header: "Asset",
-                                accessor: (row: any) => (
-                                    <span className="font-medium text-white">{row.symbol}</span>
-                                ),
-                            },
-                            {
-                                header: "Amount",
-                                accessor: (row: any) => (
-                                    <span className="font-mono text-gray-300">
-                                        {Number(row.amount).toFixed(6)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                header: "Avg Price",
-                                accessor: (row: any) => (
-                                    <span className="font-mono text-white">
-                                        ${Number(row.average_buy_price).toFixed(2)}
-                                    </span>
-                                ),
-                            },
-                            {
-                                header: "Current Price",
-                                accessor: (row: any) => {
-                                    const asset = assets?.find((a) => a.symbol === row.symbol)
-                                    return (
-                                        <span className="font-mono text-white">
-                                            ${asset?.current_price.toFixed(2) || "---"}
-                                        </span>
-                                    )
+                <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/40 backdrop-blur-xl mt-8">
+                    <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                        <h3 className="text-xl font-bold text-white">Portfolio Analysis</h3>
+                        <p className="text-xs text-gray-400 mt-1">Detailed breakdown of your current holdings</p>
+                    </div>
+                    <div className="p-4">
+                        <DataTable
+                            data={portfolio}
+                            columns={[
+                                {
+                                    header: "Asset",
+                                    accessor: (row: any) => (
+                                        <span className="font-bold text-white tracking-widest">{row.symbol}</span>
+                                    ),
                                 },
-                            },
-                            {
-                                header: "Value",
-                                accessor: (row: any) => {
-                                    const asset = assets?.find((a) => a.symbol === row.symbol)
-                                    return (
-                                        <span className="font-mono text-white">
-                                            ${(row.amount * (asset?.current_price || 0)).toFixed(2)}
-                                        </span>
-                                    )
+                                {
+                                    header: "Holdings",
+                                    accessor: (row: any) => (
+                                        <div className="font-mono text-sm">
+                                            <div className="text-white font-bold">{Number(row.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-tighter">Units held</div>
+                                        </div>
+                                    ),
                                 },
-                            },
-                            {
-                                header: "P/L",
-                                accessor: (row: any) => {
-                                    const asset = assets?.find((a) => a.symbol === row.symbol)
-                                    if (!asset) return <span>---</span>
+                                {
+                                    header: "Avg. Price",
+                                    accessor: (row: any) => (
+                                        <span className="font-mono text-xs text-gray-300">
+                                            ${Number(row.average_buy_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    header: "Valuation",
+                                    accessor: (row: any) => {
+                                        const asset = assets?.find((a) => a.symbol === row.symbol)
+                                        const value = (row.amount * (asset?.current_price || 0))
+                                        return (
+                                            <div className="font-mono text-sm">
+                                                <div className="text-white font-bold">${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                                <div className="text-[10px] text-emerald-400 uppercase tracking-tighter">Market value</div>
+                                            </div>
+                                        )
+                                    },
+                                },
+                                {
+                                    header: "Net Profit/Loss",
+                                    accessor: (row: any) => {
+                                        const asset = assets?.find((a) => a.symbol === row.symbol)
+                                        if (!asset) return <span>---</span>
 
-                                    const cost = row.amount * row.average_buy_price
-                                    const current = row.amount * asset.current_price
-                                    const diff = current - cost
+                                        const cost = row.amount * row.average_buy_price
+                                        const current = row.amount * asset.current_price
+                                        const diff = current - cost
+                                        const percent = (diff / cost) * 100
 
-                                    return (
-                                        <span
-                                            className={`font-mono font-bold ${diff >= 0 ? "text-emerald-500" : "text-red-500"
-                                                }`}
-                                        >
-                                            {diff >= 0 ? "+" : ""}${diff.toFixed(2)}
-                                        </span>
-                                    )
+                                        return (
+                                            <div className="flex flex-col items-end">
+                                                <span
+                                                    className={cn(
+                                                        "font-mono font-bold text-sm",
+                                                        diff >= 0 ? "text-emerald-400" : "text-red-400"
+                                                    )}
+                                                >
+                                                    {diff >= 0 ? "+" : ""}${Math.abs(diff).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                                <span className={cn(
+                                                    "text-[10px] font-bold px-1 rounded bg-black/20 border border-current opacity-70",
+                                                    diff >= 0 ? "text-emerald-400" : "text-red-400"
+                                                )}>
+                                                    {diff >= 0 ? "+" : ""}{percent.toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        )
+                                    },
                                 },
-                            },
-                        ]}
-                    />
+                            ]}
+                        />
+                    </div>
                 </GlassCard>
             )}
         </div>

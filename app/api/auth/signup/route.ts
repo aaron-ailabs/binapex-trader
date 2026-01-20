@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         const { data: userData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
-            email_confirm: true, // Auto-confirm for now as per "API route" usually implies simpler flow or handled by frontend. 
+            email_confirm: true, // Auto-confirm for now as per "API route" usually implies simpler flow or handled by frontend.
             // If we want allow verify, we should use signUp(), but then we need to handle the profile update with RLS or Admin.
             user_metadata: {
                 full_name: name,

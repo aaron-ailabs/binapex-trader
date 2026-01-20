@@ -1,47 +1,41 @@
 "use client"
 
-import { useState } from "react"
-import { MessageCircle, X } from "lucide-react"
+import { useSupportChat } from "@/hooks/use-support-chat"
 import { Button } from "@/components/ui/button"
-import { ChatInterface } from "./chat-interface"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { MessageCircle, X } from "lucide-react"
+import { ChatMessageList } from "./chat-message-list"
+import { ChatInput } from "./chat-input"
 import { cn } from "@/lib/utils"
 
 export function SupportWidget() {
-  const [isOpen, setIsOpen] = useState(false)
+    const { messages, isLoading, isSending, sendMessage, isOpen, setIsOpen } = useSupportChat()
 
-  return (
-    <>
-      {/* Chat Window Container */}
-      <div
-        className={cn(
-          "fixed z-50 transition-all duration-300 ease-in-out shadow-2xl overflow-hidden",
-          "bottom-0 right-0 w-full h-[100dvh] rounded-none", // Mobile styles
-          "md:bottom-24 md:right-6 md:w-[350px] md:h-[500px] md:origin-bottom-right md:rounded-2xl", // Desktop styles
-          isOpen
-            ? "translate-y-0 opacity-100 scale-100 pointer-events-auto"
-            : "translate-y-4 opacity-0 scale-95 pointer-events-none"
-        )}
-      >
-        <ChatInterface onClose={() => setIsOpen(false)} />
-      </div>
+    return (
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+                <Button
+                    size="icon"
+                    className={cn(
+                        "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 transition-all duration-300 hover:scale-105",
+                        isOpen ? "hidden" : "flex"
+                    )}
+                >
+                    <MessageCircle className="h-6 w-6" />
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-[400px] p-0 flex flex-col gap-0 h-[100dvh]">
+                <SheetHeader className="p-4 border-b">
+                    <div className="flex items-center justify-between">
+                        <SheetTitle>Support Chat</SheetTitle>
+                        {/* Close handled by X in SheetContent default, but we can have custom header actions here if needed */}
+                    </div>
+                </SheetHeader>
 
-      {/* Floating Action Button */}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        size="icon"
-        className={cn(
-          "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-xl transition-all duration-300 hover:scale-105",
-          "md:flex", // Always show on desktop
-          isOpen ? "bg-zinc-800 text-white hover:bg-zinc-700 hidden" : "bg-amber-500 text-black hover:bg-amber-400 flex" // Hide on mobile when open
-        )}
-      >
-        {isOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <MessageCircle className="h-6 w-6" />
-        )}
-        <span className="sr-only">Toggle Support Chat</span>
-      </Button>
-    </>
-  )
+                <ChatMessageList messages={messages} isLoading={isLoading} />
+
+                <ChatInput onSend={sendMessage} disabled={isSending || isLoading} />
+            </SheetContent>
+        </Sheet>
+    )
 }
