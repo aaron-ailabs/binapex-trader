@@ -2,7 +2,17 @@ import { NextResponse, type NextRequest } from "next/server"
 import { updateSession } from "@/lib/supabase/proxy"
 
 export default async function proxy(request: NextRequest) {
+  const hostname = request.nextUrl.hostname
   const pathname = request.nextUrl.pathname
+
+  // Domain Enforcement
+  if (process.env.NODE_ENV === "production") {
+    if (hostname !== "binapex.my" && hostname !== "www.binapex.my") {
+      console.warn(`[Trader Proxy] Unauthorized domain: ${hostname}. Redirecting to https://binapex.my`)
+      return NextResponse.redirect(new URL(pathname, "https://binapex.my"), 301)
+    }
+  }
+
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     return NextResponse.redirect("https://admin.binapex.my/login", 301)
   }

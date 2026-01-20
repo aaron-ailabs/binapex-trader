@@ -59,6 +59,9 @@ export async function getBatchPrices(): Promise<MarketData[]> {
   try {
     await Promise.all(assets.map(async (asset) => {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+
         const ticker = asset.yahoo_ticker;
 
         // 1. If Crypto, try Binance first
@@ -69,26 +72,41 @@ export async function getBatchPrices(): Promise<MarketData[]> {
           if (asset.symbol.startsWith('UNI')) binanceSymbol = 'UNIUSDT';
           if (asset.symbol.startsWith('MATIC')) binanceSymbol = 'POLUSDT';
 
-          const bRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSymbol}`, { next: { revalidate: 30 } });
-          if (bRes.ok) {
-            const bData = await bRes.json();
-            quoteMap[ticker] = {
-              regularMarketPrice: parseFloat(bData.lastPrice),
-              regularMarketPreviousClose: parseFloat(bData.lastPrice) - parseFloat(bData.priceChange),
-              regularMarketChangePercent: parseFloat(bData.priceChangePercent),
-              regularMarketVolume: parseFloat(bData.volume) || 0
-            };
-            return;
+          try {
+            const bRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSymbol}`, {
+              next: { revalidate: 30 },
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              quoteMap[ticker] = {
+                regularMarketPrice: parseFloat(bData.lastPrice),
+                regularMarketPreviousClose: parseFloat(bData.lastPrice) - parseFloat(bData.priceChange),
+                regularMarketChangePercent: parseFloat(bData.priceChangePercent),
+                regularMarketVolume: parseFloat(bData.volume) || 0
+              };
+              return;
+            }
+          } catch (e) {
+            // Ignore binance timeout/error, fall through to yahoo or skip
+            clearTimeout(timeoutId);
           }
         }
 
         // 2. Fallback to Yahoo
         if (ticker) {
+          const controllerYahoo = new AbortController();
+          const timeoutIdYahoo = setTimeout(() => controllerYahoo.abort(), 2000);
+
           const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1d&interval=1m`;
           const response = await fetch(yahooUrl, {
             headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 30 }
+            next: { revalidate: 30 },
+            signal: controllerYahoo.signal
           });
+          clearTimeout(timeoutIdYahoo);
 
           if (response.ok) {
             const data = await response.json();
