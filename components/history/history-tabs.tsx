@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { GlassCard } from "@/components/ui/glass-card"
 import { DataTable } from "@/components/ui/data-table"
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import type { Transaction, Trade, Asset, BinaryOrder } from "@/lib/types/database"
 import { format } from "date-fns"
 import { ExternalLink, TrendingUp, TrendingDown } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
@@ -22,8 +24,8 @@ interface HistoryTabsProps {
   pageSize: number
 }
 
-export function HistoryTabs({ 
-  transactions, 
+export function HistoryTabs({
+  transactions,
   trades,
   binaryOrders,
   currentPage,
@@ -33,6 +35,65 @@ export function HistoryTabs({
   pageSize
 }: HistoryTabsProps) {
   const [activeTab, setActiveTab] = useState("transactions")
+  const [liveTransactions, setLiveTransactions] = useState(transactions)
+  const [liveBinaryOrders, setLiveBinaryOrders] = useState(binaryOrders)
+  const supabase = createClient()
+
+  // Update local state when props change (pagination)
+  useEffect(() => {
+    setLiveTransactions(transactions)
+  }, [transactions])
+
+  useEffect(() => {
+    setLiveBinaryOrders(binaryOrders)
+  }, [binaryOrders])
+
+  // Realtime subscription for transaction status updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('history_transactions')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'transactions'
+      }, (payload) => {
+        // Update transaction in list
+        setLiveTransactions(prev =>
+          prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
+        )
+
+        // Show toast for status changes
+        if (payload.old.status !== payload.new.status) {
+          const txType = payload.new.type
+          if (payload.new.status === 'completed' || payload.new.status === 'approved') {
+            toast.success(`${txType} Approved`, {
+              description: `Your ${txType} has been processed successfully.`
+            })
+          }
+        }
+      })
+      .subscribe()
+
+    // Subscribe to binary orders updates
+    const ordersChannel = supabase
+      .channel('history_orders')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: 'type=eq.binary'
+      }, (payload) => {
+        setLiveBinaryOrders(prev =>
+          prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o)
+        )
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      supabase.removeChannel(ordersChannel)
+    }
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -75,14 +136,14 @@ export function HistoryTabs({
 
       <TabsContent value="transactions" className="mt-6">
         <GlassCard className="p-6">
-          {transactions.length === 0 ? (
+          {liveTransactions.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <p>No transactions found</p>
             </div>
           ) : (
             <>
             <DataTable
-              data={transactions}
+              data={liveTransactions}
               columns={[
                 {
                   header: "Date",
@@ -256,7 +317,7 @@ export function HistoryTabs({
           ) : (
             <>
             <DataTable
-              data={binaryOrders}
+              data={liveBinaryOrders}
               columns={[
                 {
                   header: "Date",
@@ -312,8 +373,14 @@ export function HistoryTabs({
                 {
                   header: "Profit/Loss",
                   accessor: (row: BinaryOrder) => {
-                    if (row.status === "OPEN") return <span className="text-gray-500 font-mono">--</span>
-                    const pl = row.profit_loss ?? (row.status === "WIN" ? (row.amount * row.payout_rate / 100) : -row.amount)
+                    // Read P/L directly from backend (no calculation)
+                    if (row.status === "OPEN") return <span className="text-gray-500 font-mono">Pending</span>
+
+                    const pl = row.profit_loss
+                    if (pl === null || pl === undefined) {
+                      return <span className="text-gray-500 font-mono">--</span>
+                    }
+
                     return (
                         <span
                           className={`font-mono font-bold ${pl >= 0 ? "text-emerald-500" : "text-red-500"}`}
