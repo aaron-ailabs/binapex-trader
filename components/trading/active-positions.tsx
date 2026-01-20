@@ -49,53 +49,42 @@ export function ActivePositions() {
     useEffect(() => {
         fetchTrades()
 
-        // Realtime Subscription
-        const channel = supabase
-            .channel('realtime_orders')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'orders',
-                filter: `type=eq.binary`
-            }, (payload: any) => {
-                // Play sounds on status change
-                if (payload.eventType === 'UPDATE') {
-                    const newStatus = payload.new.status
-                    const oldStatus = payload.old.status
-                    if (oldStatus === 'OPEN') {
-                        if (newStatus === 'WIN') play('success')
-                        if (newStatus === 'LOSS') play('loss')
-                    }
-                }
-                fetchTrades() // Refresh list on any change
-            })
-            .subscribe()
+        // Realtime Subscription - filtered by user
+        const setupSubscription = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
 
+            const channel = supabase
+                .channel('realtime_orders')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `user_id=eq.${user.id}`
+                }, (payload: any) => {
+                    // Play sounds on status change
+                    if (payload.eventType === 'UPDATE') {
+                        const newStatus = payload.new.status
+                        const oldStatus = payload.old.status
+                        if (oldStatus === 'OPEN') {
+                            if (newStatus === 'WIN') play('success')
+                            if (newStatus === 'LOSS') play('loss')
+                        }
+                    }
+                    fetchTrades() // Refresh list on any change
+                })
+                .subscribe()
+
+            return () => {
+                supabase.removeChannel(channel)
+            }
+        }
+
+        const cleanup = setupSubscription()
         return () => {
-            supabase.removeChannel(channel)
+            cleanup.then(unsub => unsub?.())
         }
     }, [play])
-
-    const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({})
-
-    // Mock Real-Time Price Simulation
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentPrices(prev => {
-                const next = { ...prev }
-                trades.forEach(t => {
-                    if (t.status === 'OPEN') {
-                        // Simulate small random movement from strike price if not set, or current
-                        const base = next[t.asset_symbol] || t.strike_price || 100
-                        const change = (Math.random() - 0.5) * (base * 0.001) // 0.1% volatility
-                        next[t.asset_symbol] = base + change
-                    }
-                })
-                return next
-            })
-        }, 2000)
-        return () => clearInterval(interval)
-    }, [trades])
 
     return (
         <Card className="bg-white/5 border-white/10 flex flex-col h-full">
@@ -121,22 +110,9 @@ export function ActivePositions() {
                         const isLoss = trade.status === 'LOSS'
                         const isOpen = trade.status === 'OPEN'
 
-                        // Calculate P/L
-                        let floatingPL = 0
-                        let currentPrice = 0
-
-                        if (isOpen) {
-                            currentPrice = currentPrices[trade.asset_symbol] || trade.strike_price || 0
-                            const diff = currentPrice - (trade.strike_price || 0)
-                            // Formula: (current - entry) * size (assuming size = amount for simplicity in this view)
-                            // For Binary, this is purely indicative/mock as requested
-                            if (isCall) floatingPL = diff * trade.amount
-                            else floatingPL = -diff * trade.amount
-                        }
-
-                        // Display logic
-                        const plColor = floatingPL >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        const plSign = floatingPL > 0 ? '+' : ''
+                        // Read P/L directly from backend (no calculation)
+                        const profitLoss = Number(trade.profit_loss || 0)
+                        const payout = trade.payout || 0
 
                         // Timer logic
                         if (!trade.end_time && isOpen) return null
@@ -149,23 +125,18 @@ export function ActivePositions() {
                                         <div className="flex flex-col gap-1 min-w-[30%]">
                                             <div className="font-bold text-white text-md flex items-center gap-2">
                                                 {trade.asset_symbol}
-                                                {isOpen && (
-                                                    <span className="text-[10px] bg-white/10 px-1 rounded text-gray-400 font-mono">
-                                                        {currentPrice > 0 ? currentPrice.toFixed(2) : '...'}
-                                                    </span>
-                                                )}
                                             </div>
                                             <div className={`text-xs font-mono font-black tracking-wider ${isCall ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                 {isCall ? '↑ CALL' : '↓ PUT'}
                                             </div>
                                         </div>
 
-                                        {/* Floating P/L for Open Trades */}
-                                        {isOpen && (
+                                        {/* Show backend P/L for settled trades only */}
+                                        {!isOpen && (isWin || isLoss) && (
                                             <div className="flex flex-col items-center min-w-[20%]">
-                                                <div className="text-[10px] text-gray-500 uppercase font-bold">Floating P/L</div>
-                                                <div className={`font-mono font-bold ${plColor}`}>
-                                                    {plSign}{floatingPL.toFixed(2)}
+                                                <div className="text-[10px] text-gray-500 uppercase font-bold">Result</div>
+                                                <div className={`font-mono font-bold ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {isWin ? `+$${profitLoss.toFixed(2)}` : `-$${Number(trade.amount).toFixed(2)}`}
                                                 </div>
                                             </div>
                                         )}
@@ -179,11 +150,11 @@ export function ActivePositions() {
                                                     </Badge>
                                                 ) : isWin ? (
                                                     <Badge className="border-emerald-500/50 text-emerald-400 bg-emerald-500/10 gap-1 text-[10px] px-2">
-                                                        <Trophy size={10} /> +${(Number(trade.profit_loss || 0) + Number(trade.amount)).toFixed(2)}
+                                                        <Trophy size={10} /> ${payout > 0 ? payout.toFixed(2) : `+${profitLoss.toFixed(2)}`}
                                                     </Badge>
                                                 ) : (
                                                     <Badge className="border-rose-500/50 text-rose-400 bg-rose-500/10 gap-1 text-[10px] px-2">
-                                                        <XCircle size={10} /> $0.00
+                                                        <XCircle size={10} /> Lost
                                                     </Badge>
                                                 )}
                                             </div>
@@ -237,21 +208,23 @@ export function ActivePositions() {
                                             <p className="font-mono">${Number(trade.strike_price || 0).toFixed(5)}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-gray-500 text-xs uppercase">Current Price</p>
-                                            <p className="font-mono">${currentPrice.toFixed(5)}</p>
+                                            <p className="text-gray-500 text-xs uppercase">Final Price</p>
+                                            <p className="font-mono">${trade.final_price ? Number(trade.final_price).toFixed(5) : 'Pending'}</p>
                                         </div>
                                         <div className="space-y-1 text-right">
                                             <p className="text-gray-500 text-xs uppercase">Duration</p>
                                             <p className="font-mono">{totalDuration}s</p>
                                         </div>
-                                        <div className="col-span-2 pt-2 border-t border-white/10">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">Result</span>
-                                                <span className={`text-lg font-bold font-mono ${floatingPL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                    {plSign}${floatingPL.toFixed(2)}
-                                                </span>
+                                        {!isOpen && (
+                                            <div className="col-span-2 pt-2 border-t border-white/10">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-400">Result</span>
+                                                    <span className={`text-lg font-bold font-mono ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        {isWin ? `+$${profitLoss.toFixed(2)}` : `-$${Number(trade.amount).toFixed(2)}`}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </DialogContent>
                             </Dialog>

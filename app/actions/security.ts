@@ -15,22 +15,7 @@ export async function updateWithdrawalPassword(password: string) {
     }
 
     try {
-        // Upsert into user_withdrawal_secrets (Plaintext storage as per requirements)
-        // Reset failed_attempts and is_locked on NEW password set?
-        // Usually yes, if user is setting it.
-        // But what if a hacker resets it?
-        // This endpoint verifies Auth (Login). So if they are logged in, they can reset it.
-        // We will reset locks.
-
-        const { error } = await supabase
-            .from("user_withdrawal_secrets")
-            .upsert({
-                user_id: user.id,
-                password_plaintext: password,
-                failed_attempts: 0,
-                is_locked: false,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' })
+        const { error } = await supabase.rpc('set_withdrawal_password', { new_pwd: password })
 
         if (error) {
             console.error("Update withdrawal password error:", error)

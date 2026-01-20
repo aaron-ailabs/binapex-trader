@@ -5,9 +5,6 @@ import { Deno } from "https://deno.land/std@0.168.0/node/global.ts"
 const COINGECKO_API = "https://api.coingecko.com/api/v3"
 const ALPHA_VANTAGE_API = "https://www.alphavantage.co/query"
 
-const COINGECKO_API_KEY = "CG-UGQ7V2q7G5cgYKpEpFVe9w1H"
-const ALPHA_VANTAGE_API_KEY = "2GGYYA6ZN9L437PT"
-
 interface CoinGeckoPrice {
   id: string
   symbol: string
@@ -22,6 +19,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const coinGeckoApiKey = Deno.env.get("COINGECKO_API_KEY")
+    const alphaVantageApiKey = Deno.env.get("ALPHA_VANTAGE_API_KEY")
+    if (!coinGeckoApiKey || !alphaVantageApiKey) {
+      throw new Error("Missing market data API keys")
+    }
 
     console.log("[v0] Starting market data fetch...")
 
@@ -47,7 +50,7 @@ serve(async (req) => {
             `${COINGECKO_API}/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`,
             {
               headers: {
-                "x-cg-pro-api-key": COINGECKO_API_KEY,
+                "x-cg-pro-api-key": coinGeckoApiKey,
               },
             },
           )
@@ -61,7 +64,7 @@ serve(async (req) => {
         } else if (asset.type === "forex") {
           const pair = asset.symbol.replace("/", "")
           const response = await fetch(
-            `${ALPHA_VANTAGE_API}?function=CURRENCY_EXCHANGE_RATE&from_currency=${pair.slice(0, 3)}&to_currency=${pair.slice(3)}&apikey=${ALPHA_VANTAGE_API_KEY}`,
+            `${ALPHA_VANTAGE_API}?function=CURRENCY_EXCHANGE_RATE&from_currency=${pair.slice(0, 3)}&to_currency=${pair.slice(3)}&apikey=${alphaVantageApiKey}`,
           )
           const data = await response.json()
 

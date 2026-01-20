@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -16,17 +16,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Withdrawal password must be at least 8 characters' }, { status: 400 })
         }
 
-        // Initialize Supabase Admin client (Service Role) to properly set user attributes and DB fields
-        const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            {
-                auth: {
-                    autoRefreshToken: false,
-                    persistSession: false
-                }
-            }
-        )
+        // Use the service client for admin operations
+        const supabaseAdmin = createServiceClient()
 
         // Hash the withdrawal password
         const withdrawalPasswordHash = await bcrypt.hash(withdrawalPassword, 10)
@@ -57,24 +48,39 @@ export async function POST(req: Request) {
         }
 
         // Update profiles table with withdrawal password
-        // The trigger `handle_new_user` creates the profile ROW. verify it exists or wait?
-        // It runs AFTER INSERT on auth.users, so it should be there.
+        // The trigger `handle_new_user` creates the profile ROW.
+        // Wait for profile to be created (retry logic to handle race condition)
+        let profileUpdated = false
+        let retries = 0
+        const maxRetries = 5
 
-        // We update the profile with the hash
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .update({
-                withdrawal_password: withdrawalPasswordHash,
-                withdrawal_password_set: true,
-                withdrawal_password_last_reset: new Date().toISOString()
-            })
-            .eq('id', userData.user.id)
+        while (!profileUpdated && retries < maxRetries) {
+            // Small delay to allow trigger to complete (except first attempt)
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100 * retries))
+            }
 
-        if (profileError) {
-            // Rollback? Hard to rollback user creation without transaction across auth & public.
-            // Log error.
-            console.error('Failed to set withdrawal password', profileError)
-            return NextResponse.json({ error: 'Account created but failed to set withdrawal password. Please contact support.' }, { status: 500 })
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .update({
+                    withdrawal_password: withdrawalPasswordHash,
+                    withdrawal_password_set: true,
+                    withdrawal_password_last_reset: new Date().toISOString()
+                })
+                .eq('id', userData.user.id)
+
+            if (!profileError) {
+                profileUpdated = true
+            } else if (retries === maxRetries - 1) {
+                // Last retry failed
+                console.error('Failed to set withdrawal password after retries', profileError)
+                return NextResponse.json({
+                    error: 'Account created but failed to set withdrawal password. Please contact support.',
+                    details: process.env.NODE_ENV === 'development' ? profileError.message : undefined
+                }, { status: 500 })
+            }
+
+            retries++
         }
 
         // SEC-04 FIX: Removed plaintext login password storage.
@@ -84,6 +90,12 @@ export async function POST(req: Request) {
 
     } catch (err: any) {
         console.error('Signup error:', err)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+        // In development, return more detailed error
+        const errorMessage = process.env.NODE_ENV === 'development'
+            ? `Internal server error: ${err?.message || 'Unknown error'}`
+            : 'Internal server error'
+
+        return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 }
