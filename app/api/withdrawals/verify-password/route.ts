@@ -39,13 +39,68 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Withdrawal password not set' }, { status: 400 })
         }
 
+        // Rate limiting: Check for recent failed attempts (last 15 minutes)
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+        const { data: recentFailures, error: auditError } = await supabase
+            .from('audit_log')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('action', 'WITHDRAWAL_PASSWORD_FAILED')
+            .gte('timestamp', fifteenMinutesAgo)
+
+        if (auditError) {
+            console.error('Error checking audit log:', auditError)
+            // Continue with verification even if audit check fails
+        }
+
+        const failedAttempts = recentFailures?.length || 0
+
+        // Block if too many failed attempts (5 or more in 15 minutes)
+        if (failedAttempts >= 5) {
+            return NextResponse.json(
+                {
+                    error: 'Too many failed attempts. Please try again later or contact customer service.',
+                    retryAfter: 900 // 15 minutes in seconds
+                },
+                { status: 429 }
+            )
+        }
+
         // Compare hash
         const match = await bcrypt.compare(withdrawalPassword, profile.withdrawal_password)
 
         if (!match) {
-            // TODO: Rate limiting logic could go here (Redis or DB timestamp check)
+            // Log failed attempt to audit log for rate limiting
+            await supabase
+                .from('audit_log')
+                .insert({
+                    user_id: userId,
+                    action: 'WITHDRAWAL_PASSWORD_FAILED',
+                    table_name: 'profiles',
+                    record_id: userId,
+                    metadata: {
+                        ip: req.headers.get('x-forwarded-for') || 'unknown',
+                        user_agent: req.headers.get('user-agent') || 'unknown',
+                        attempt_number: failedAttempts + 1
+                    }
+                })
+
             return NextResponse.json({ error: 'Error: Please contact customer service.' }, { status: 403 })
         }
+
+        // Log successful verification (optional, for security audit trail)
+        await supabase
+            .from('audit_log')
+            .insert({
+                user_id: userId,
+                action: 'WITHDRAWAL_PASSWORD_VERIFIED',
+                table_name: 'profiles',
+                record_id: userId,
+                metadata: {
+                    ip: req.headers.get('x-forwarded-for') || 'unknown',
+                    user_agent: req.headers.get('user-agent') || 'unknown'
+                }
+            })
 
         return NextResponse.json({ success: true })
 
