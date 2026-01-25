@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Loader2, Trophy, XCircle, Clock } from "lucide-react"
 import { CircularTimer } from "@/components/ui/circular-timer"
 import { useSound } from "@/lib/hooks/use-sound"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
 
 interface Trade {
     id: string
@@ -24,14 +25,14 @@ interface Trade {
 }
 
 export function ActivePositions() {
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
+    const { user } = useAuth()
     const [trades, setTrades] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const { play } = useSound()
 
     // Fetch Initial Trades
-    const fetchTrades = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
+    const fetchTrades = useCallback(async () => {
         if (!user) return
 
         const { data } = await supabase
@@ -44,47 +45,42 @@ export function ActivePositions() {
 
         if (data) setTrades(data)
         setIsLoading(false)
-    }
+    }, [user, supabase])
 
     useEffect(() => {
+        if (!user) return
         fetchTrades()
 
         // Realtime Subscription - filtered by user
-        const setupSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            const channel = supabase
-                .channel('realtime_orders')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `user_id=eq.${user.id}`
-                }, (payload: any) => {
-                    // Play sounds on status change
-                    if (payload.eventType === 'UPDATE') {
-                        const newStatus = payload.new.status
-                        const oldStatus = payload.old.status
-                        if (oldStatus === 'OPEN') {
-                            if (newStatus === 'WIN') play('success')
-                            if (newStatus === 'LOSS') play('loss')
-                        }
+        const channel = supabase
+            .channel(`realtime_orders:${user.id}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'orders',
+                filter: `user_id=eq.${user.id}`
+            }, (payload: any) => {
+                // Play sounds on status change
+                if (payload.eventType === 'UPDATE') {
+                    const newStatus = payload.new.status
+                    const oldStatus = payload.old.status
+                    if (oldStatus === 'OPEN') {
+                        if (newStatus === 'WIN') play('success')
+                        if (newStatus === 'LOSS') play('loss')
                     }
-                    fetchTrades() // Refresh list on any change
-                })
-                .subscribe()
+                }
+                fetchTrades() // Refresh list on any change
+            })
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error(`Realtime subscription error for realtime_orders:${user.id}`)
+                }
+            })
 
-            return () => {
-                supabase.removeChannel(channel)
-            }
-        }
-
-        const cleanup = setupSubscription()
         return () => {
-            cleanup.then(unsub => unsub?.())
+            supabase.removeChannel(channel)
         }
-    }, [play])
+    }, [user, fetchTrades, play, supabase])
 
     return (
         <Card className="bg-white/5 border-white/10 flex flex-col h-full">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 import { Database } from "@/types/supabase"
@@ -8,7 +8,7 @@ type Message = Database["public"]["Tables"]["support_messages"]["Row"]
 
 export function useSupportChat() {
     const { user } = useAuth()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const [conversationId, setConversationId] = useState<string | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
@@ -59,11 +59,11 @@ export function useSupportChat() {
         }
 
         initChat()
-    }, [user, isOpen])
+    }, [user, isOpen, supabase])
 
     // 2. Realtime Subscription
     useEffect(() => {
-        if (!conversationId) return
+        if (!user || !conversationId) return
 
         const channel = supabase
             .channel(`chat:${conversationId}`)
@@ -81,12 +81,16 @@ export function useSupportChat() {
                     setTimeout(scrollToBottom, 100)
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error(`Realtime subscription error for chat:${conversationId}`)
+                }
+            })
 
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [conversationId])
+    }, [user, conversationId, supabase])
 
     // 3. Send Message
     const sendMessage = async (content: string) => {
@@ -97,7 +101,7 @@ export function useSupportChat() {
 
             const { error } = await supabase.rpc("send_support_message", {
                 p_conversation_id: conversationId,
-                p_content: content.trim()
+                p_message: content.trim()
             })
 
             if (error) throw error

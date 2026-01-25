@@ -1,14 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel } from "@supabase/supabase-js"
+import { useAuth } from "@/contexts/auth-context"
 
 export function useLiveData<T>(table: string, initialData: T[], orderBy?: { column: string; ascending: boolean }) {
   const [data, setData] = useState<T[]>(initialData)
+  const { user } = useAuth()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    const supabase = createClient()
+    if (!user) return
     let channel: RealtimeChannel
 
     const setupChannel = () => {
@@ -63,7 +66,11 @@ export function useLiveData<T>(table: string, initialData: T[], orderBy?: { colu
             setData((current) => current.filter((item: any) => item.id !== payload.old.id))
           },
         )
-        .subscribe()
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR') {
+            console.error(`Realtime subscription error for ${table}-changes`)
+          }
+        })
     }
 
     setupChannel()
@@ -73,7 +80,7 @@ export function useLiveData<T>(table: string, initialData: T[], orderBy?: { colu
         supabase.removeChannel(channel)
       }
     }
-  }, [table])
+  }, [table, user, supabase, orderBy])
 
   return data
 }

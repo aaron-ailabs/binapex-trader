@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Bell, Check, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,14 +32,14 @@ interface Notification {
 }
 
 export function UserNotificationBell() {
+    const { user } = useAuth()
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
     const { play } = useSoundEffects()
     const router = useRouter()
 
-    const fetchNotifications = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
+    const fetchNotifications = useCallback(async () => {
         if (!user) return
 
         const { data, error } = await supabase
@@ -52,70 +53,63 @@ export function UserNotificationBell() {
             setNotifications(data as Notification[])
             setUnreadCount(data.filter((n: Notification) => !n.is_read).length)
         }
-    }
+    }, [user, supabase])
 
     useEffect(() => {
+        if (!user) return
         fetchNotifications()
 
-        const setupSubscription = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+        const channel = supabase
+            .channel(`user_notifications:${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "user_notifications",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    const newNotif = payload.new as Notification
+                    setNotifications((prev) => [newNotif, ...prev])
+                    setUnreadCount((prev) => prev + 1)
 
-            const channel = supabase
-                .channel(`user_notifications:${user.id}`)
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "INSERT",
-                        schema: "public",
-                        table: "user_notifications",
-                        filter: `user_id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        const newNotif = payload.new as Notification
-                        setNotifications((prev) => [newNotif, ...prev])
-                        setUnreadCount((prev) => prev + 1)
-
-                        // Determine sound based on type and content
-                        if (newNotif.type === 'trade') {
-                            if (newNotif.title.includes('Won')) {
-                                play('success')
-                            } else if (newNotif.title.includes('Finished') || newNotif.title.includes('Lost')) {
-                                play('loss')
-                            } else {
-                                play('notification')
-                            }
-                        } else if (newNotif.type === 'deposit') {
-                            if (newNotif.title.includes('Confirmed')) {
-                                play('success')
-                            } else {
-                                play('warning')
-                            }
-                        } else if (newNotif.type === 'chat') {
-                            play('notification')
+                    // Determine sound based on type and content
+                    if (newNotif.type === 'trade') {
+                        if (newNotif.title.includes('Won')) {
+                            play('success')
+                        } else if (newNotif.title.includes('Finished') || newNotif.title.includes('Lost')) {
+                            play('loss')
                         } else {
                             play('notification')
                         }
+                    } else if (newNotif.type === 'deposit') {
+                        if (newNotif.title.includes('Confirmed')) {
+                            play('success')
+                        } else {
+                            play('warning')
+                        }
+                    } else if (newNotif.type === 'chat') {
+                        play('notification')
+                    } else {
+                        play('notification')
+                    }
 
-                        toast(newNotif.title, {
-                            description: newNotif.message,
-                            action: newNotif.link ? {
-                                label: "View",
-                                onClick: () => router.push(newNotif.link!)
-                            } : undefined,
-                        })
-                    },
-                )
-                .subscribe()
+                    toast(newNotif.title, {
+                        description: newNotif.message,
+                    })
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error(`Realtime subscription error for user_notifications:${user.id}`)
+                }
+            })
 
-            return () => {
-                supabase.removeChannel(channel)
-            }
+        return () => {
+            supabase.removeChannel(channel)
         }
-
-        const cleanup = setupSubscription()
-        return () => { cleanup.then(unsub => unsub?.()) }
-    }, [])
+    }, [user, fetchNotifications, play, supabase])
 
     const markAsRead = async (id: string, link?: string) => {
         // Optimistic update
@@ -133,11 +127,9 @@ export function UserNotificationBell() {
     }
 
     const markAllAsRead = async () => {
+        if (!user) return
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
         setUnreadCount(0)
-
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
 
         await supabase
             .from("user_notifications")

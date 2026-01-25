@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { DataTable } from "@/components/ui/data-table"
 import { GlassCard } from "@/components/ui/glass-card"
@@ -31,15 +32,18 @@ export function DashboardClient({
     initialPortfolio,
     userEmail,
 }: DashboardClientProps) {
-    const supabase = createClient()
+    const { user } = useAuth()
+    const supabase = useMemo(() => createClient(), [])
     const [assets, setAssets] = useState<Asset[]>(initialAssets)
     const [portfolio, setPortfolio] = useState<any[]>(initialPortfolio)
     const [balance, setBalance] = useState(initialBalance)
 
     useEffect(() => {
+        if (!user) return
+
         // Subscribe to Asset Price Updates
         const channel = supabase
-            .channel("realtime-assets")
+            .channel(`realtime-assets:${user.id}`)
             .on(
                 "postgres_changes",
                 {
@@ -56,18 +60,22 @@ export function DashboardClient({
                     )
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error(`Realtime subscription error for realtime-assets:${user.id}`)
+                }
+            })
 
-        // Subscribe to Wallet Balance Updates (Optional/Bonus)
+        // Subscribe to Wallet Balance Updates
         const walletChannel = supabase
-            .channel("realtime-wallets")
+            .channel(`realtime-wallets:${user.id}`)
             .on(
                 "postgres_changes",
                 {
                     event: "UPDATE",
                     schema: "public",
                     table: "wallets",
-                    filter: `user_id=eq.${initialProfile?.id}`
+                    filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
                     if (payload.new.asset === 'USD') {
@@ -75,13 +83,17 @@ export function DashboardClient({
                     }
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error(`Realtime subscription error for realtime-wallets:${user.id}`)
+                }
+            })
 
         return () => {
             supabase.removeChannel(channel)
             supabase.removeChannel(walletChannel)
         }
-    }, [supabase, initialProfile?.id])
+    }, [supabase, user])
 
     // Display balance from backend only (no calculations)
     const displayBalance = balance

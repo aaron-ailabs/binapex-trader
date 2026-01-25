@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter, usePathname } from "next/navigation"
 
@@ -9,7 +9,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const [checking, setChecking] = useState(true)
     const [maintenance, setMaintenance] = useState(false)
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         const checkStatus = async () => {
@@ -66,10 +66,14 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
                     else if (pathname === '/maintenance') window.location.href = '/'
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime subscription error for maintenance_guard')
+                }
+            })
 
         return () => { supabase.removeChannel(channel) }
-    }, [pathname, router])
+    }, [pathname, router, supabase])
 
     if (maintenance && pathname !== '/maintenance' && checking) {
         // Show nothing while checking permission or redirecting

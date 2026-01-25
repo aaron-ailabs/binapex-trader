@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getActiveTrades, getTradeHistory, getOpenLimitOrders, Trade } from "@/app/actions/trades"
@@ -9,16 +9,19 @@ import { ArrowUp, ArrowDown, Clock, Trophy, Ban, Timer, RefreshCcw, XCircle } fr
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/auth-context"
 
 export function TradeList() {
     const [activeTrades, setActiveTrades] = useState<Trade[]>([])
     const [historyTrades, setHistoryTrades] = useState<Trade[]>([])
     const [limitOrders, setLimitOrders] = useState<any[]>([])
     const [now, setNow] = useState(Date.now())
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
+    const { user } = useAuth()
 
     // Initial Fetch
     const refreshTrades = async () => {
+        if (!user) return
         const active = await getActiveTrades()
         if (active && active.data) setActiveTrades(active.data)
 
@@ -44,18 +47,19 @@ export function TradeList() {
     }
 
     useEffect(() => {
+        if (!user) return
         refreshTrades()
 
         // Setup Realtime Subscription
         const channel = supabase
-            .channel('trade-updates')
+            .channel(`trade-updates:${user.id}`)
             .on(
                 'postgres_changes',
                 {
                     event: '*', // Listen to INSERT and UPDATE
                     schema: 'public',
                     table: 'orders',
-                    filter: 'type=eq.binary'
+                    filter: `user_id=eq.${user.id}`
                 },
                 (payload) => {
                     if (payload.eventType === 'INSERT') {
@@ -90,16 +94,20 @@ export function TradeList() {
                     }
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime subscription error for trade-updates')
+                }
+            })
 
         // Timer Interval
         const interval = setInterval(() => setNow(Date.now()), 1000)
 
         return () => {
-            supabase.removeChannel(channel)
             clearInterval(interval)
+            supabase.removeChannel(channel)
         }
-    }, [])
+    }, [user, supabase])
 
     const formatCountdown = (endTime: string | null) => {
         if (!endTime) return "00:00"

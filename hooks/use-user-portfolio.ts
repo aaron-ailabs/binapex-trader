@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 
 export interface PortfolioData {
   balance_usd: number
@@ -10,16 +11,16 @@ export interface PortfolioData {
 }
 
 export function useUserPortfolio() {
+  const { user } = useAuth()
   const [data, setData] = useState<PortfolioData>({
     balance_usd: 0,
     holdings: {},
     isLoading: true,
   })
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
-  const fetchPortfolio = async () => {
+  const fetchPortfolio = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setData(prev => ({ ...prev, isLoading: false }))
         return
@@ -52,32 +53,39 @@ export function useUserPortfolio() {
       console.error("Error fetching portfolio:", error)
       setData(prev => ({ ...prev, isLoading: false }))
     }
-  }
+  }, [user, supabase])
 
   useEffect(() => {
+    if (!user) return
     fetchPortfolio()
 
-    // Subscribe to balance changes
+    // Subscribe to balance changes for this specific user
     const channel = supabase
-      .channel('portfolio_balance')
+      .channel(`portfolio:${user.id}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'wallets' 
+        table: 'wallets',
+        filter: `user_id=eq.${user.id}`
       }, () => {
         fetchPortfolio()
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for portfolio:${user.id}`)
+        }
+      })
 
     // Listen for custom wallet_update event
     const handleUpdate = () => fetchPortfolio()
     window.addEventListener('wallet_update', handleUpdate)
 
     return () => {
+      channel.unsubscribe()
       supabase.removeChannel(channel)
       window.removeEventListener('wallet_update', handleUpdate)
     }
-  }, [])
+  }, [user, fetchPortfolio, supabase])
 
   return { ...data, refetch: fetchPortfolio }
 }

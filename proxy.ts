@@ -15,7 +15,7 @@ export default async function proxy(request: NextRequest) {
 
   // Admin redirection
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    return NextResponse.redirect("https://admin.binapex.my/login", 301)
+    return NextResponse.redirect("https://admin.binapex.my/admin/login", 301)
   }
 
   // Consolidate session update and auth logic

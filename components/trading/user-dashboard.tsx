@@ -1,11 +1,9 @@
 'use client';
 import { createClient } from '@/lib/supabase/client';
-import { useState, useEffect } from 'react';
-import { Database } from '@/types/supabase';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
 // Define the shape based on 'orders' table
-// Define the shape based on 'orders' table (Live DB Schema)
-// Manual definition to bypass stale generated types
 type LimitOrder = {
   id: string;
   user_id: string;
@@ -21,12 +19,12 @@ type LimitOrder = {
 };
 
 export function UserDashboard({ symbol }: { symbol?: string }) {
-  const supabase = createClient();
+  const { user } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
   const [orders, setOrders] = useState<LimitOrder[]>([]);
   const [activeTab, setActiveTab] = useState<'open' | 'history'>('open');
 
-  const fetchOrders = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
 
     // Use 'orders' table (Live DB)
@@ -43,14 +41,6 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
         query = query.in('status', ['filled', 'canceled', 'rejected']); 
     }
     
-    // Filter by symbol if provided (client side is safer for simple string matching if exact match fails)
-    // Or plain .eq('pair', normalizedSymbol) if we know the format
-    if (symbol) {
-         // Try exact match first
-         // query = query.eq('pair', symbol.replace('/', '-')); 
-         // For now let's filter client side to be safe with format differences
-    }
-
     const { data, error } = await query.limit(50);
     
     if (error) {
@@ -66,31 +56,37 @@ export function UserDashboard({ symbol }: { symbol?: string }) {
     }
     
     setOrders(fetchedOrders);
-  };
+  }, [user, supabase, activeTab, symbol]);
 
   useEffect(() => {
+    if (!user) return;
     fetchOrders();
 
     // Realtime subscription
     const channel = supabase
-      .channel('my-orders')
+      .channel(`my-orders:${user.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
+          filter: `user_id=eq.${user.id}`
         },
-        (payload) => {
+        () => {
            fetchOrders();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for my-orders:${user.id}`)
+        }
+      });
 
     return () => {
         supabase.removeChannel(channel);
     }
-  }, [activeTab, symbol]);
+  }, [user, fetchOrders, supabase]);
 
   return (
     <div className="bg-[#0a0a0a] border border-white/10 rounded-lg p-4 font-mono text-sm mt-4 min-h-[300px]">

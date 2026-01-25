@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/auth-context';
 
 interface OrderBookEntry {
     price: number;
@@ -21,20 +22,22 @@ export function OrderBook({ price, symbol = "BTC-USD" }: { price: number, symbol
   const normalizedSymbol = symbol.replace('/', '-');
   const [asks, setAsks] = useState<OrderBookEntry[]>([]);
   const [bids, setBids] = useState<OrderBookEntry[]>([]);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const { user } = useAuth();
+
+  const fetchBook = useCallback(async () => {
+      const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('pair', normalizedSymbol)
+          .eq('status', 'OPEN');
+      
+      if (data) processOrders(data);
+  }, [supabase, normalizedSymbol]);
 
   useEffect(() => {
+    if (!user) return
     // 1. Fetch Initial State
-    const fetchBook = async () => {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('pair', normalizedSymbol)
-            .eq('status', 'OPEN');
-        
-        if (data) processOrders(data);
-    };
-
     fetchBook();
 
     // 2. Realtime Subscription
@@ -55,12 +58,16 @@ export function OrderBook({ price, symbol = "BTC-USD" }: { price: number, symbol
                 fetchBook();
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+                console.error(`Realtime subscription error for orderbook-${normalizedSymbol}`)
+            }
+        });
 
     return () => {
         supabase.removeChannel(channel);
     };
-  }, [normalizedSymbol]);
+  }, [user, fetchBook, supabase, normalizedSymbol]);
 
   const processOrders = (orders: any[]) => {
       const newAsks: Record<number, number> = {};

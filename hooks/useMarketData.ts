@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/auth-context';
 
 export interface Candle {
   time: string | number;
@@ -18,6 +19,8 @@ export interface MarketDataHook {
 }
 
 export function useMarketData(symbol: string): MarketDataHook {
+  const { user } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [currentPrice, setCurrentPrice] = useState(0);
   const [change24h, setChange24h] = useState(0);
@@ -62,9 +65,8 @@ export function useMarketData(symbol: string): MarketDataHook {
 
   // 2. Realtime Subscription & Polling Fallback
   useEffect(() => {
-    if (!symbol) return;
+    if (!symbol || !user) return;
     let active = true;
-    const supabase = createClient();
 
     async function fetchQuote() {
       try {
@@ -100,7 +102,11 @@ export function useMarketData(symbol: string): MarketDataHook {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR') {
+            console.error(`Realtime subscription error for price-updates:${asset.id}`)
+          }
+        });
     };
 
     fetchQuote();
@@ -114,7 +120,7 @@ export function useMarketData(symbol: string): MarketDataHook {
       if (channel) supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [symbol]);
+  }, [symbol, user, supabase]);
 
   return { candles, currentPrice, change24h, isLoading, error };
 }

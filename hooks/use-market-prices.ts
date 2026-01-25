@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 import type { Asset } from "@/lib/types/database"
 
 export interface MarketPrice {
@@ -15,10 +16,12 @@ export interface MarketPrice {
 }
 
 export function useMarketPrices(assets: Asset[]) {
+  const { user } = useAuth()
   const [prices, setPrices] = useState<Record<string, MarketPrice>>({})
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
+    if (!user) return
     // Initial fetch
     const fetchPrices = async () => {
       const { data, error } = await supabase
@@ -66,7 +69,7 @@ export function useMarketPrices(assets: Asset[]) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [assets])
+  }, [assets, user, supabase])
 
   return prices
 }

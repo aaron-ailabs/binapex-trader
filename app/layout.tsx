@@ -60,12 +60,12 @@ export default function RootLayout({
             <MaintenanceGuard>
               {children}
               <SupportWidget />
+              <GlobalNotificationListener />
             </MaintenanceGuard>
           </AuthProvider>
         </ErrorBoundary>
         <Analytics />
         <Toaster position="top-right" />
-        <GlobalNotificationListener />
       </body>
     </html>
   )

@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { GlassCard } from "@/components/ui/glass-card"
+import { useAuth } from "@/contexts/auth-context"
 
 interface RecentTradesProps {
   assetId: string
@@ -18,9 +19,12 @@ interface Trade {
 
 export function RecentTrades({ assetId }: RecentTradesProps) {
   const [trades, setTrades] = useState<Trade[]>([])
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const { user } = useAuth()
 
   useEffect(() => {
+    if (!user) return
+
     // Fetch initial trades
     const fetchTrades = async () => {
       const { data } = await supabase
@@ -37,7 +41,7 @@ export function RecentTrades({ assetId }: RecentTradesProps) {
 
     // Realtime subscription
     const channel = supabase
-      .channel('trade_history')
+      .channel(`trade_history:${assetId}`)
       .on(
         'postgres_changes',
         {
@@ -50,12 +54,16 @@ export function RecentTrades({ assetId }: RecentTradesProps) {
           setTrades(prev => [payload.new as Trade, ...prev].slice(0, 20))
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for trade_history:${assetId}`)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [assetId, supabase])
+  }, [assetId, supabase, user])
 
   return (
     <GlassCard className="p-4 h-full flex flex-col">

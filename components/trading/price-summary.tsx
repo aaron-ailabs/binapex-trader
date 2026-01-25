@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 
@@ -11,7 +11,7 @@ interface PriceSummaryProps {
 
 export function PriceSummary({ assetId, symbol }: PriceSummaryProps) {
   const [ticker, setTicker] = useState<any>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     // Initial fetch
@@ -29,7 +29,7 @@ export function PriceSummary({ assetId, symbol }: PriceSummaryProps) {
 
     // Realtime subscription
     const channel = supabase
-      .channel('ticker_updates')
+      .channel(`ticker_updates:${assetId}`)
       .on(
         'postgres_changes',
         {
@@ -42,7 +42,11 @@ export function PriceSummary({ assetId, symbol }: PriceSummaryProps) {
           setTicker(payload.new)
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for ticker_updates:${assetId}`)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

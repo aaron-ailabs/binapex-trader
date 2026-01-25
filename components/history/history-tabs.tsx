@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { GlassCard } from "@/components/ui/glass-card"
 import { DataTable } from "@/components/ui/data-table"
@@ -10,6 +10,7 @@ import { format } from "date-fns"
 import { ExternalLink, TrendingUp, TrendingDown } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/auth-context"
 
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
@@ -37,7 +38,8 @@ export function HistoryTabs({
   const [activeTab, setActiveTab] = useState("transactions")
   const [liveTransactions, setLiveTransactions] = useState(transactions)
   const [liveBinaryOrders, setLiveBinaryOrders] = useState(binaryOrders)
-  const supabase = createClient()
+  const { user } = useAuth()
+  const supabase = useMemo(() => createClient(), [])
 
   // Update local state when props change (pagination)
   useEffect(() => {
@@ -50,12 +52,15 @@ export function HistoryTabs({
 
   // Realtime subscription for transaction status updates
   useEffect(() => {
+    if (!user) return
+
     const channel = supabase
-      .channel('history_transactions')
+      .channel(`history_transactions:${user.id}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
-        table: 'transactions'
+        table: 'transactions',
+        filter: `user_id=eq.${user.id}`
       }, (payload) => {
         // Update transaction in list
         setLiveTransactions(prev =>
@@ -72,28 +77,36 @@ export function HistoryTabs({
           }
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for history_transactions:${user.id}`)
+        }
+      })
 
     // Subscribe to binary orders updates
     const ordersChannel = supabase
-      .channel('history_orders')
+      .channel(`history_orders:${user.id}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'orders',
-        filter: 'type=eq.binary'
+        filter: `user_id=eq.${user.id}`
       }, (payload) => {
         setLiveBinaryOrders(prev =>
           prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o)
         )
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`Realtime subscription error for history_orders:${user.id}`)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
       supabase.removeChannel(ordersChannel)
     }
-  }, [])
+  }, [user, supabase])
 
   const getStatusColor = (status: string) => {
     switch (status) {
