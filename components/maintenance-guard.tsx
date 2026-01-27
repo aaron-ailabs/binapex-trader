@@ -13,43 +13,52 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const checkStatus = async () => {
-            // 1. Check Maintenance Setting
-            const { data: settings } = await supabase
-                .from('system_settings')
-                .select('value')
-                .eq('key', 'maintenance_mode')
-                .single()
+            try {
+                // 1. Check Maintenance Setting
+                const { data: settings, error } = await supabase
+                    .from('system_settings')
+                    .select('value')
+                    .eq('key', 'maintenance_mode')
+                    .single()
 
-            const isMaintenance = settings?.value === 'true'
-            setMaintenance(isMaintenance)
+                if (error && error.code !== 'PGRST116') { // Ignore "Row not found" (PGRST116) as it's not a maintenance state
+                    console.warn('Maintenance check failed, assuming active', error.message)
+                }
 
-            if (isMaintenance) {
-                // 2. Allow Admin Bypass
-                const { data: { user } } = await supabase.auth.getUser()
-                if (user) {
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', user.id)
-                        .single()
+                const isMaintenance = settings?.value === 'true'
+                setMaintenance(isMaintenance)
 
-                    if (profile?.role === 'admin') {
-                        setChecking(false)
-                        return // Allow access
+                if (isMaintenance) {
+                    // 2. Allow Admin Bypass
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user) {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', user.id)
+                            .single()
+
+                        if (profile?.role === 'admin') {
+                            setChecking(false)
+                            return // Allow access
+                        }
+                    }
+
+                    // 3. Redirect if not admin and page is not already /maintenance
+                    if (pathname !== '/maintenance') {
+                        router.push('/maintenance')
+                    }
+                } else {
+                    // Not in maintenance, but on maintenance page? Redirect home
+                    if (pathname === '/maintenance') {
+                        router.push('/')
                     }
                 }
-
-                // 3. Redirect if not admin and page is not already /maintenance
-                if (pathname !== '/maintenance') {
-                    router.push('/maintenance')
-                }
-            } else {
-                // Not in maintenance, but on maintenance page? Redirect home
-                if (pathname === '/maintenance') {
-                    router.push('/')
-                }
+            } catch (err) {
+                console.error('Maintenance Guard Critical Error:', err)
+            } finally {
+                setChecking(false)
             }
-            setChecking(false)
         }
 
         checkStatus()

@@ -8,10 +8,10 @@ import { SupportWidget } from "@/components/support/support-widget"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { MaintenanceGuard } from "@/components/maintenance-guard"
 import { GlobalNotificationListener } from "@/components/notifications/global-listeners"
+import { createClient } from "@/lib/supabase/server"
 import "./globals.css"
 
 export const dynamic = "force-dynamic"
-
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({
@@ -45,18 +45,23 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
   return (
     <html lang="en" className="dark bg-binapex-dark">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-binapex-dark text-foreground`}
       >
         <ErrorBoundary>
-          <AuthProvider>
+          <AuthProvider initialSession={session}>
             <MaintenanceGuard>
               {children}
               <SupportWidget />

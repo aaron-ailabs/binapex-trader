@@ -23,12 +23,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const roleCache = new Map<string, { role: string; timestamp: number }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+import { Session } from "@supabase/supabase-js"
+
+interface AuthProviderProps {
+  children: React.ReactNode
+  initialSession?: Session | null
+}
+
+export function AuthProvider({ children, initialSession }: AuthProviderProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!initialSession)
+  const [user, setUser] = useState<User | null>(() => {
+    if (initialSession?.user) {
+      return {
+        id: initialSession.user.id,
+        email: initialSession.user.email || "",
+        role: (initialSession.user.user_metadata?.role as "admin" | "trader") || "trader"
+      }
+    }
+    return null
+  })
+  const [isLoading, setIsLoading] = useState(!initialSession)
   const router = useRouter()
-  const initializeRef = useRef(false)
+  const initializeRef = useRef(!!initialSession)
 
   useEffect(() => {
     if (initializeRef.current) return

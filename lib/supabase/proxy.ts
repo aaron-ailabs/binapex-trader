@@ -10,6 +10,12 @@ const adminStatusCache = new Map<string, { isAdmin: boolean; timestamp: number }
 const ADMIN_CACHE_DURATION = 1 * 60 * 1000 // 1 minute
 
 
+const settingsCache = {
+  maintenance: false,
+  timestamp: 0
+}
+const SETTINGS_CACHE_TTL = 30 * 1000 // 30 seconds
+
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL
   const supabaseAnonKey = NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY
@@ -23,23 +29,50 @@ export async function updateSession(request: NextRequest) {
   try {
     const pathname = request.nextUrl.pathname
 
-    // Skip auth check for public assets and static files
     if (isStaticAsset(pathname)) {
       return response
     }
 
     console.log("[Middleware] Processing request:", pathname)
 
+    // --- MAINTENANCE MODE CHECK ---
+    const now = Date.now()
+    if (now - settingsCache.timestamp > SETTINGS_CACHE_TTL) {
+      // Refresh settings
+      const { data } = await supabase.from('system_settings').select('value').eq('key', 'maintenance_mode').single()
+      if (data) {
+        settingsCache.maintenance = data.value === 'true'
+      }
+      settingsCache.timestamp = now
+    }
+
+    if (settingsCache.maintenance) {
+      // Allow access to maintenance page and static assets
+      if (!pathname.startsWith('/maintenance') && !pathname.startsWith('/_next') && !pathname.startsWith('/api/')) {
+        return NextResponse.redirect(new URL('/maintenance', request.url))
+      }
+    } else {
+      // If NOT in maintenance mode, redirect away from maintenance page
+      if (pathname.startsWith('/maintenance')) {
+        return NextResponse.redirect(new URL('/', request.url))
+      }
+    }
+    // -----------------------------
+
     // Determine if we need to authenticate the user
     // Protected paths from both middleware.ts and lib/supabase/proxy.ts
     const protectedPaths = ["/dashboard", "/deposit", "/withdrawal", "/trade", "/settings", "/admin", "/api"]
     const isProtected = protectedPaths.some((path) => pathname.startsWith(path))
+
+    // Explicitly allow public API routes
+    const isPublicApi = pathname.startsWith("/api/auth/") || pathname.startsWith("/api/public/")
+
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/admin/login"
 
     let user = null
 
     // Optimizing auth calls: only fetch user if necessary
-    if (isProtected || isAuthPage) {
+    if ((isProtected && !isPublicApi) || isAuthPage) {
       const { data } = await supabase.auth.getUser()
       user = data.user
 
@@ -51,13 +84,34 @@ export async function updateSession(request: NextRequest) {
     // Apply Routing Logic
 
     // 1. Protected Route Protection
-    if (isProtected) {
+    if (isProtected && !isPublicApi) {
       if (!user) {
         // Special handling for API routes
         if (pathname.startsWith("/api/")) {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         return redirectTo(request, "/login", pathname)
+      } else {
+        // Check if user is Admin - Block access to Trader Dashboard
+        const cacheKey = user.id
+        const cachedStatus = adminStatusCache.get(cacheKey)
+        const now = Date.now()
+        let isAdmin = false
+
+        if (cachedStatus && (now - cachedStatus.timestamp) < ADMIN_CACHE_DURATION) {
+          isAdmin = cachedStatus.isAdmin
+        } else {
+          // Fetch role from DB
+          const { data: role } = await supabase.rpc("get_user_role")
+          isAdmin = role === "admin"
+          adminStatusCache.set(cacheKey, { isAdmin, timestamp: now })
+        }
+
+        if (isAdmin) {
+          console.warn("[Middleware] Admin attempted to access trader dashboard:", user.email)
+          // Redirect to Admin Portal
+          return NextResponse.redirect(new URL("https://admin.binapex.my/admin/dashboard"))
+        }
       }
     }
 

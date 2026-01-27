@@ -112,8 +112,8 @@ export function useMarketData(symbol: string): MarketDataHook {
     fetchQuote();
     setupRealtime();
 
-    // Slow fallback interval (30s) instead of 2s
-    const interval = setInterval(fetchQuote, 30000);
+    // Fail-safe polling interval (2s) to ensure price updates even if realtime fails
+    const interval = setInterval(fetchQuote, 2000);
 
     return () => {
       active = false;

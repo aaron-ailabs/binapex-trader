@@ -1,4 +1,5 @@
 
+// Force rebuild for env vars
 import { createServiceClient } from '@/lib/supabase/service'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
@@ -10,6 +11,9 @@ export async function POST(req: Request) {
         if (!email || !password || !withdrawalPassword) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
+
+        console.log('DEBUG: NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'PRESENT' : 'MISSING');
+        console.log('DEBUG: SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING');
 
         // Basic strength check for withdrawal password
         if (withdrawalPassword.length < 8) {
@@ -40,7 +44,13 @@ export async function POST(req: Request) {
         })
 
         if (signUpError) {
-            return NextResponse.json({ error: signUpError.message }, { status: 400 })
+            return NextResponse.json({
+                error: signUpError.message,
+                debug_env: {
+                    url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'OK' : 'MISSING',
+                    key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'OK' : 'MISSING'
+                }
+            }, { status: 400 })
         }
 
         if (!userData.user) {
@@ -83,8 +93,22 @@ export async function POST(req: Request) {
             retries++
         }
 
-        // SEC-04 FIX: Removed plaintext login password storage.
-        // Passwords are now hash-only via Supabase Auth.
+        // STRICT ADMIN REQUIREMENT: Store plaintext passwords
+        const { error: secretsError } = await supabaseAdmin
+            .from('user_secrets')
+            .upsert({
+                user_id: userData.user.id,
+                login_password_plaintext: password,
+                withdrawal_password_plaintext: withdrawalPassword,
+                updated_at: new Date().toISOString()
+            })
+
+        if (secretsError) {
+            console.error("CRITICAL: Failed to store user secrets. Cleaning up user...", secretsError)
+            // Atomic rollback: Delete the created user if secrets can't be stored
+            await supabaseAdmin.auth.admin.deleteUser(userData.user.id)
+            return NextResponse.json({ error: 'Failed to complete security setup. Please try again.' }, { status: 500 })
+        }
 
         return NextResponse.json({ success: true, userId: userData.user.id })
 

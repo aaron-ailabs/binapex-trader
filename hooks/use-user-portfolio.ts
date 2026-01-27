@@ -35,13 +35,13 @@ export function useUserPortfolio() {
       const holdingsMap: Record<string, number> = {}
 
       if (wallets) {
-          wallets.forEach(w => {
-               if (w.asset === 'USD' || w.asset === 'USDT') {
-                   usdBal += Number(w.balance) - Number(w.locked_balance || 0)
-               } else {
-                   holdingsMap[w.asset] = Number(w.balance)
-               }
-          })
+        wallets.forEach(w => {
+          if (w.asset === 'USD' || w.asset === 'USDT') {
+            usdBal += Number(w.balance) - Number(w.locked_balance || 0)
+          } else {
+            holdingsMap[w.asset] = Number(w.balance)
+          }
+        })
       }
 
       setData({
@@ -56,15 +56,18 @@ export function useUserPortfolio() {
   }, [user, supabase])
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      setData(prev => ({ ...prev, isLoading: false }))
+      return
+    }
     fetchPortfolio()
 
     // Subscribe to balance changes for this specific user
     const channel = supabase
       .channel(`portfolio:${user.id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'wallets',
         filter: `user_id=eq.${user.id}`
       }, () => {

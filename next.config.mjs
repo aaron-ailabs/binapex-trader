@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Force reload for environment variables
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
